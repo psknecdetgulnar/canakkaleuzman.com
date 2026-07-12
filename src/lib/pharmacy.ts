@@ -38,6 +38,29 @@ export async function getPharmaciesForDate(date: string): Promise<PharmacyDuty[]
   return data.map(rowToPharmacy);
 }
 
+// Kalıcı çözümün bir parçası: yönetim ekranından o günün listesi girilmeyi
+// unutulursa sayfa sessizce boş kalmasın diye, en son girilen tarihe düşer.
+// Böylece "bugün için kayıt yok" durumu yerine en güncel bilinen liste +
+// hangi tarihe ait olduğu bilgisi gösterilir.
+export async function getTodayPharmaciesWithFallback(): Promise<{ pharmacies: PharmacyDuty[]; date: string; isStale: boolean }> {
+  const today = todayIso();
+  const todays = await getPharmaciesForDate(today);
+  if (todays.length > 0) return { pharmacies: todays, date: today, isStale: false };
+
+  if (!db) return { pharmacies: [], date: today, isStale: false };
+  const { data, error } = await db
+    .from("pharmacy_duty")
+    .select("duty_date")
+    .order("duty_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return { pharmacies: [], date: today, isStale: false };
+
+  const latestDate = data.duty_date as string;
+  const latest = await getPharmaciesForDate(latestDate);
+  return { pharmacies: latest, date: latestDate, isStale: latestDate !== today };
+}
+
 export async function getTodayPharmacies(): Promise<PharmacyDuty[]> {
   return getPharmaciesForDate(todayIso());
 }

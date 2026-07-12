@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTodayPharmacies } from "@/lib/pharmacy";
+import { getTodayPharmaciesWithFallback } from "@/lib/pharmacy";
 import { ProfileHeaderBar } from "@/components/profile/ProfileHeaderBar";
 import { Footer } from "@/components/home/Footer";
 import { rootUrl } from "@/lib/site";
@@ -12,15 +12,15 @@ export const metadata: Metadata = {
   alternates: { canonical: rootUrl("/nobetci-eczane") },
 };
 
-function formatToday() {
+function formatDate(iso: string) {
   const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
   const days = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
-  const d = new Date();
+  const d = new Date(`${iso}T00:00:00`);
   return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export default async function PharmacyDutyPage() {
-  const pharmacies = await getTodayPharmacies();
+  const { pharmacies, date, isStale } = await getTodayPharmaciesWithFallback();
 
   return (
     <>
@@ -29,15 +29,20 @@ export default async function PharmacyDutyPage() {
         <section className="border-b border-[rgba(16,40,68,0.08)] bg-[#f3eee6] px-5 py-12">
           <div className="mx-auto max-w-[760px]">
             <h1 className="font-display text-[2.4rem] font-semibold text-[#0d2c4b] md:text-[3rem]">Nöbetçi Eczaneler</h1>
-            <p className="mt-2 text-[#102844]">{formatToday()} — Çanakkale</p>
+            <p className="mt-2 text-[#102844]">{formatDate(date)} — Çanakkale</p>
           </div>
         </section>
 
         <section className="px-5 py-10">
           <div className="mx-auto max-w-[760px]">
+            {isStale && pharmacies.length > 0 && (
+              <div className="mb-4 rounded-[10px] border border-[#c99a53] bg-[#fdf3e9] px-4 py-3 text-sm text-[#7a4f1a]">
+                Bugüne ait liste henüz girilmedi. En güncel bilinen liste ({formatDate(date)}) gösteriliyor.
+              </div>
+            )}
             {pharmacies.length === 0 ? (
               <div className="rounded-[14px] border border-[rgba(16,40,68,0.10)] bg-[#f3eee6] px-5 py-10 text-center text-[#102844]">
-                Bugün için nöbetçi eczane kaydı henüz girilmedi.
+                Nöbetçi eczane kaydı henüz girilmedi.
               </div>
             ) : (
               <ul className="flex flex-col gap-3">
