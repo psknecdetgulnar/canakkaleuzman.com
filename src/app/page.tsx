@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { HomePage } from "@/components/home/HomePage";
 import { getExperts, getBlogPosts } from "@/lib/db";
 import { getCompanies, getOpenJobListings } from "@/lib/companies";
+import { getTodayPharmacies } from "@/lib/pharmacy";
 import { rootUrl } from "@/lib/site";
 
 export const revalidate = 300;
@@ -14,11 +15,20 @@ export const metadata: Metadata = {
 };
 
 export default async function Page() {
-  const [experts, blogPosts, companies, jobs] = await Promise.all([
+  const [experts, blogPosts, companies, jobs, pharmacies] = await Promise.all([
     getExperts(),
     getBlogPosts(),
     getCompanies(),
     getOpenJobListings(),
+    getTodayPharmacies(),
   ]);
-  return <HomePage experts={experts} blogPosts={blogPosts} companies={companies} jobs={jobs} />;
+  return (
+    <HomePage
+      experts={experts}
+      blogPosts={blogPosts}
+      companies={companies}
+      jobs={jobs}
+      pharmacies={pharmacies}
+    />
+  );
 }

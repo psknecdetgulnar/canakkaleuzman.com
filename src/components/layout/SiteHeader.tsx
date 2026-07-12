@@ -94,14 +94,14 @@ export function SiteHeader({ onJoinClick, onLoginClick }: SiteHeaderProps) {
               className="rounded-[6px] bg-[#0d2c4b] px-5 py-2.5 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#143a60]"
               onClick={onJoinClick}
             >
-              Uzman Ol
+              Kayıt Ol
             </button>
           ) : (
             <Link
               href="/panel"
               className="rounded-[6px] bg-[#0d2c4b] px-5 py-2.5 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#143a60]"
             >
-              Uzman Ol
+              Kayıt Ol
             </Link>
           )}
           {onLoginClick ? (
@@ -156,11 +156,11 @@ export function SiteHeader({ onJoinClick, onLoginClick }: SiteHeaderProps) {
                   onJoinClick();
                 }}
               >
-                Uzman Ol
+                Kayıt Ol
               </button>
             ) : (
               <Link href="/panel" onClick={closeMenu} className="rounded-[6px] bg-[#0d2c4b] px-5 py-3 text-center text-sm font-semibold text-[#fffdf9]">
-                Uzman Ol
+                Kayıt Ol
               </Link>
             )}
             {onLoginClick ? (
