@@ -19,6 +19,9 @@ export default function CompanyPanelLayout({ children }: { children: React.React
               <Link href="/sirket-paneli/is-ilanlari" className="transition-colors hover:text-[#c99a53]">
                 İş ilanları
               </Link>
+              <Link href="/sirket-paneli/destek" className="transition-colors hover:text-[#c99a53]">
+                Destek
+              </Link>
               <Link href="/" className="transition-colors hover:text-[#c99a53]">
                 Dizine dön
               </Link>

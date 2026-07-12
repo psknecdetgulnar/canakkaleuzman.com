@@ -1,21 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPharmaciesForDate, addPharmacyDuty, deletePharmacyDuty, type PharmacyDuty } from "@/lib/pharmacy";
+import Link from "next/link";
+import type { Session } from "@supabase/supabase-js";
+import { authDb, sessionIsAdmin } from "@/lib/adminAuth";
+import { getPharmaciesForDate, type PharmacyDuty } from "@/lib/pharmacy";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Hafif, pratik yönetim ekranı: gerçek zamanlı otomatik çekme yerine, günlük
-// listeyi elle (eczacı odası duyurusundan) girmek için. Auth gelene kadar
-// herkese açık — spesifikasyonun "pratik yöntem" isteğine karşılık gelir.
+// Nöbetçi eczane yönetimi — yalnızca admin. Yazma işlemleri RLS'te
+// is_admin() ile korunur; bu yüzden oturumlu authDb istemcisi kullanılır.
+// Boş kalan günleri her gece Vercel Cron (api/cron/pharmacy) doldurur;
+// buradan girilen gerçek liste otomatik veriyi her zaman ezer (önce sil, ekle).
 export default function ManagePharmacyDutyPage() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
   const [date, setDate] = useState(todayIso());
   const [list, setList] = useState<PharmacyDuty[] | null>(null);
   const [form, setForm] = useState({ name: "", district: "", address: "", phone: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authDb) {
+      setReady(true);
+      return;
+    }
+    authDb.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setReady(true);
+    });
+    const { data: sub } = authDb.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   async function load() {
     setList(null);
@@ -28,40 +47,70 @@ export default function ManagePharmacyDutyPage() {
   }, [date]);
 
   async function submit() {
+    if (!authDb) return;
     if (!form.name.trim() || !form.district.trim()) {
       setError("Eczane adı ve ilçe zorunludur.");
       return;
     }
     setBusy(true);
     setError(null);
-    const res = await addPharmacyDuty({ dutyDate: date, ...form });
+    const { error: ie } = await authDb.from("pharmacy_duty").insert({
+      duty_date: date,
+      name: form.name.trim().slice(0, 160),
+      district: form.district.trim().slice(0, 80),
+      address: form.address.trim() || null,
+      phone: form.phone.trim() || null,
+    });
     setBusy(false);
-    if (res.ok) {
+    if (ie) {
+      setError(ie.message);
+    } else {
       setForm({ name: "", district: "", address: "", phone: "" });
       load();
-    } else {
-      setError(res.error ?? "Kaydedilemedi.");
     }
   }
 
   async function remove(id: string) {
+    if (!authDb) return;
     setBusy(true);
-    await deletePharmacyDuty(id);
+    await authDb.from("pharmacy_duty").delete().eq("id", id);
     await load();
     setBusy(false);
+  }
+
+  if (!ready) {
+    return (
+      <main className="min-h-screen bg-[#fffdf9] px-5 py-10">
+        <div className="mx-auto max-w-[640px]"><div className="h-40 animate-pulse rounded-[14px] bg-[#f3eee6]" /></div>
+      </main>
+    );
+  }
+
+  if (!sessionIsAdmin(session)) {
+    return (
+      <main className="min-h-screen bg-[#fffdf9] px-5 py-10">
+        <div className="mx-auto max-w-[640px] rounded-[14px] border border-[rgba(16,40,68,0.10)] bg-[#f3eee6] p-8 text-center">
+          <h1 className="font-display text-[1.5rem] font-semibold text-[#0d2c4b]">Yönetici girişi gerekli</h1>
+          <p className="mt-2 text-sm text-[#102844]">Nöbetçi eczane listesini yalnızca yöneticiler düzenleyebilir.</p>
+          <Link href="/admin" className="mt-4 inline-block rounded-[6px] bg-[#0d2c4b] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#143a60]">
+            Yönetici girişine git
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   return (
     <main className="min-h-screen bg-[#fffdf9] px-5 py-10">
       <div className="mx-auto max-w-[640px]">
-        <h1 className="font-display text-[2rem] font-semibold text-[#0d2c4b]">Nöbetçi Eczane — Yönetim</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="font-display text-[2rem] font-semibold text-[#0d2c4b]">Nöbetçi Eczane — Yönetim</h1>
+          <Link href="/admin" className="text-sm font-semibold text-[#0d2c4b] hover:text-[#c99a53]">← Yönetim paneli</Link>
+        </div>
         <p className="mt-1 text-sm text-[#102844]">
-          Otomatik, güvenilir bir üçüncü taraf kazıma sistemi bu ortamdan kurulamıyor — bunun yerine
-          eczacı odası/il sağlık müdürlüğü duyurusundaki günlük listeyi buradan elle girebilirsin.
-          Girilen kayıtlar anında{" "}
-          <a href="/nobetci-eczane" className="font-semibold text-[#0d2c4b] hover:text-[#c99a53]">
-            halka açık sayfada
-          </a>{" "}
+          Eczacı odası duyurusundaki günlük listeyi buradan gir. Boş kalan günler her gece
+          otomatik doldurulur; senin girdiğin liste her zaman önceliklidir. Kayıtlar anında{" "}
+          <a href="/nobetci-eczane" className="font-semibold text-[#0d2c4b] hover:text-[#c99a53]">halka açık sayfada</a>{" "}
           görünür.
         </p>
 

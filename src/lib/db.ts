@@ -70,18 +70,20 @@ function rowToPost(r: any): BlogPost {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+// GERÇEK VERİ MODU: Supabase yapılandırılmışsa statik demo verisine ASLA
+// düşülmez — hata durumunda sahte uzman göstermek yerine boş liste döner.
+// Statik veri yalnızca env anahtarları hiç yokken (yerel tasarım/demo) kullanılır.
 export async function getExperts(): Promise<Expert[]> {
   if (!db) return staticExperts;
   const { data, error } = await db.from("experts").select("*").eq("status", "approved").order("name");
-  if (error || !data) return staticExperts;
+  if (error || !data) return [];
   return data.map(rowToExpert);
 }
 
 export async function getExpertProfileBySlug(slug: string): Promise<ExpertProfile | null> {
   if (!db) return staticProfileBySlug(slug);
   const { data, error } = await db.from("experts").select("*").eq("id", slug).maybeSingle();
-  if (error) return staticProfileBySlug(slug);
-  if (!data) return null;
+  if (error || !data) return null;
   return rowToProfile(data);
 }
 
@@ -93,15 +95,14 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
     .select("*")
     .eq("published", true)
     .order("date", { ascending: false });
-  if (error || !data) return staticPosts.filter((p) => p.published !== false);
+  if (error || !data) return [];
   return data.map(rowToPost);
 }
 
 export async function getBlogPost(slug: string): Promise<BlogPost | null> {
   if (!db) return staticPosts.find((p) => p.slug === slug) ?? null;
   const { data, error } = await db.from("blog_posts").select("*").eq("slug", slug).maybeSingle();
-  if (error) return staticPosts.find((p) => p.slug === slug) ?? null;
-  if (!data) return null;
+  if (error || !data) return null;
   return rowToPost(data);
 }
 
@@ -191,6 +192,43 @@ export async function deleteBlogPost(slug: string): Promise<{ ok: boolean; error
   if (!db) return { ok: false, error: "Bağlantı yok" };
   const { error } = await db.from("blog_posts").delete().eq("slug", slug);
   return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+// Yeni uzman başvurusu: status='pending' ile kaydedilir; admin panelinden
+// onaylanana kadar dizinde GÖRÜNMEZ (RLS: experts_public_apply politikası
+// anon insert'e yalnızca pending statüsüyle izin verir).
+export type ExpertApplication = {
+  name: string;
+  title: string;
+  category: string;      // kategori slug'ı (categories.ts)
+  categoryLabel: string;
+  phone: string;
+  district?: string;
+};
+
+export async function createExpertApplication(a: ExpertApplication): Promise<{ ok: boolean; error?: string; id?: string }> {
+  if (!db) return { ok: false, error: "Bağlantı yok" };
+  const base = slugify(a.name).slice(0, 60) || "uzman";
+  const initials = a.name.split(" ").map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "??";
+  // Bekleyen kayıtlar anon select'e kapalı olduğundan çakışma önceden
+  // görülemez; PK çakışmasında (23505) sonek ekleyerek yeniden denenir.
+  for (let i = 0; i < 20; i++) {
+    const id = i === 0 ? base : `${base}-${i + 1}`;
+    const { error } = await db.from("experts").insert({
+      id,
+      name: a.name.trim().slice(0, 120),
+      title: a.title.trim().slice(0, 120),
+      category: a.category,
+      category_label: a.categoryLabel,
+      district: a.district?.trim() || "Merkez",
+      initials,
+      phone: a.phone.trim().slice(0, 40) || null,
+      status: "pending",
+    });
+    if (!error) return { ok: true, id };
+    if (error.code !== "23505") return { ok: false, error: error.message };
+  }
+  return { ok: false, error: "Uygun bir profil adresi bulunamadı, lütfen bizimle iletişime geçin." };
 }
 
 export { staticExperts, staticPosts, getExpertProfile };

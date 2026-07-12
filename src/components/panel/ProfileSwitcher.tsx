@@ -14,6 +14,15 @@ export function ProfileSwitcher() {
     return <div className="h-[52px] animate-pulse rounded-[10px] bg-[#f3eee6]" />;
   }
 
+  if (experts.length === 0) {
+    return (
+      <div className="rounded-[10px] border border-dashed border-[rgba(16,40,68,0.18)] bg-[#f3eee6] px-4 py-4 text-sm text-[#102844]">
+        Henüz onaylanmış uzman profili yok. Ana sayfadaki <strong>Kayıt Ol</strong> formundan
+        başvuru yapılabilir; başvurular yönetici onayından sonra burada görünür.
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[rgba(16,40,68,0.10)] bg-[#f3eee6] px-4 py-3">
       <div className="flex items-center gap-3">

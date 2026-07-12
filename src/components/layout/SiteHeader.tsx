@@ -48,9 +48,14 @@ export function SiteHeader({ onJoinClick, onLoginClick }: SiteHeaderProps) {
               {item.label}
             </Link>
           ))}
+          {/* Sayfanın altındaki iletişim bilgilerine (footer) yumuşak kaydırma.
+              Footer tüm halka açık sayfalarda id="iletisim" ile mevcut. */}
+          <a href="#iletisim" className="whitespace-nowrap transition-colors hover:text-[#c99a53]">
+            İletişim
+          </a>
         </nav>
 
-        <div className="hidden shrink-0 items-center gap-2.5 lg:flex">
+        <div className="mr-3 hidden shrink-0 items-center gap-2.5 lg:flex">
           {onJoinClick ? (
             <button
               type="button"

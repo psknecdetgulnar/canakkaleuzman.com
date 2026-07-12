@@ -28,6 +28,9 @@ export function HomeBlogSection({ posts: allPosts }: { posts: BlogPost[] }) {
     setPosts(shuffle(allPosts).slice(0, COUNT));
   }, [allPosts]);
 
+  // Henüz yayınlanmış yazı yoksa bölüm hiç gösterilmez (boş vitrin olmasın).
+  if (allPosts.length === 0) return null;
+
   return (
     <section id="blog" className="bg-[#fffdf9] px-5 py-8 md:py-10">
       <div className="mx-auto max-w-[860px]">

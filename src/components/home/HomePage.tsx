@@ -8,6 +8,7 @@ import type { BlogPost } from "@/data/blog";
 import type { Company, JobListing } from "@/lib/companies";
 import type { PharmacyDuty } from "@/lib/pharmacy";
 import { createCompany } from "@/lib/companies";
+import { createExpertApplication } from "@/lib/db";
 import { Header } from "./Header";
 import { Hero } from "./Hero";
 import { HomePharmacyBanner } from "./HomePharmacyBanner";
@@ -134,24 +135,73 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
 }
 
 function ExpertJoinForm() {
-  const router = useRouter();
+  const [form, setForm] = useState({ name: "", title: "", category: categories[0].slug as string, phone: "" });
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!form.name.trim() || !form.title.trim() || !form.phone.trim()) {
+      setError("Tüm alanlar zorunludur.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const cat = categories.find((c) => c.slug === form.category) ?? categories[0];
+    const res = await createExpertApplication({
+      name: form.name,
+      title: form.title,
+      category: cat.slug,
+      categoryLabel: cat.name,
+      phone: form.phone,
+    });
+    setBusy(false);
+    if (res.ok) setDone(true);
+    else setError(res.error ?? "Başvuru gönderilemedi.");
+  }
+
+  if (done) {
+    return (
+      <div className="rounded-[8px] bg-[#f3eee6] p-4 text-sm leading-6 text-[#102844]">
+        <p className="font-semibold text-[#0d2c4b]">Başvurun alındı! 🎉</p>
+        <p className="mt-1">
+          Profilin ekibimiz tarafından incelenecek ve onaylandığında dizinde yayına girecek.
+          Telefonundan sana ulaşacağız.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <form
-      className="space-y-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        router.push("/panel");
-      }}
-    >
-      <Field label="Ad soyad" placeholder="Adınız ve soyadınız" />
-      <Field label="Uzmanlık alanı" placeholder="Örn. Klinik Psikolog" />
-      <Field label="Telefon" placeholder="+90 5XX XXX XX XX" />
+    <form className="space-y-4" onSubmit={submit}>
+      <Field label="Ad soyad" placeholder="Adınız ve soyadınız" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
+      <Field label="Uzmanlık alanı" placeholder="Örn. Klinik Psikolog" value={form.title} onChange={(v) => setForm((f) => ({ ...f, title: v }))} />
+      <label className="block">
+        <span className="text-sm font-semibold text-[#0d2c4b]">Kategori</span>
+        <select
+          value={form.category}
+          onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+          className="mt-2 h-12 w-full rounded-[6px] border border-[rgba(16,40,68,0.14)] bg-[#fffdf9] px-4 text-sm outline-none focus:border-[#c99a53]"
+        >
+          {categories.map((c) => (
+            <option key={c.slug} value={c.slug}>{c.name}</option>
+          ))}
+        </select>
+      </label>
+      <Field label="Telefon" placeholder="+90 5XX XXX XX XX" value={form.phone} onChange={(v) => setForm((f) => ({ ...f, phone: v }))} />
+      {error && <p className="text-sm text-[#b3261e]">{error}</p>}
       <button
         type="submit"
-        className="w-full rounded-[6px] bg-[#c99a53] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#b98742]"
+        disabled={busy}
+        className="w-full rounded-[6px] bg-[#c99a53] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#b98742] disabled:opacity-50"
       >
-        Başvuruyu gönder
+        {busy ? "Gönderiliyor…" : "Başvuruyu gönder"}
       </button>
+      <p className="text-xs leading-5 text-[rgba(16,40,68,0.6)]">
+        Başvurun admin onayından geçtikten sonra profilin yayına girer. Sağlık ve hukuk
+        branşlarında diploma/ruhsat belgesi istenir.
+      </p>
     </form>
   );
 }

@@ -21,6 +21,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <Link href="/panel/blog" className="transition-colors hover:text-[#c99a53]">
                 Blog
               </Link>
+              <Link href="/panel/destek" className="transition-colors hover:text-[#c99a53]">
+                Destek
+              </Link>
               <Link href="/" className="transition-colors hover:text-[#c99a53]">
                 Dizine dön
               </Link>

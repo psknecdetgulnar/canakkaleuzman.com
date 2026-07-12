@@ -211,3 +211,74 @@ drop policy if exists blog_demo_update on blog_posts;
 create policy blog_demo_update on blog_posts for update using (true) with check (true);
 drop policy if exists blog_demo_delete on blog_posts;
 create policy blog_demo_delete on blog_posts for delete using (true);
+
+-- ── MIGRASYON: Admin rolü + destek sistemi + gerçek kayıt akışı ─────────────
+-- Admin, Supabase Auth'ta user_metadata.role='admin' olan kullanıcıdır.
+-- Bu blok: (1) destek mesajları tablosu, (2) admin'e tam yönetim yetkisi,
+-- (3) yeni uzman başvurusu (status='pending') için halka açık insert izni,
+-- (4) nöbetçi eczane yazma yetkisinin admin'e kilitlenmesi.
+
+-- JWT'den admin kontrolü (user_metadata.role = 'admin')
+create or replace function is_admin() returns boolean
+language sql stable as $$
+  select coalesce((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin', false)
+$$;
+
+-- ── support_messages (kullanıcı ↔ admin destek hattı) ──────────────────────
+create table if not exists support_messages (
+  id uuid primary key default gen_random_uuid(),
+  sender_type text not null check (sender_type in ('uzman','sirket','ziyaretci')),
+  sender_id text,                      -- uzman slug'ı veya şirket id'si (varsa)
+  sender_name text not null,
+  sender_email text,
+  subject text not null,
+  message text not null,
+  admin_reply text,                    -- admin cevabı; kullanıcı panelinde görünür
+  status text not null default 'open' check (status in ('open','answered','closed')),
+  created_at timestamptz not null default now(),
+  replied_at timestamptz
+);
+create index if not exists support_sender_idx on support_messages(sender_type, sender_id);
+create index if not exists support_status_idx on support_messages(status);
+
+alter table support_messages enable row level security;
+drop policy if exists support_public_insert on support_messages;
+create policy support_public_insert on support_messages for insert with check (true);
+-- DEMO: paneller kendi mesajlarını sender_id ile filtreleyerek okur; kullanıcı
+-- auth'u geldiğinde sahibe kilitlenecek. Admin her şeyi okur/günceller.
+drop policy if exists support_demo_read on support_messages;
+create policy support_demo_read on support_messages for select using (true);
+drop policy if exists support_admin_update on support_messages;
+create policy support_admin_update on support_messages for update using (is_admin()) with check (is_admin());
+drop policy if exists support_admin_delete on support_messages;
+create policy support_admin_delete on support_messages for delete using (is_admin());
+
+-- ── Uzman başvurusu: halka açık insert yalnızca 'pending' statüsüyle ────────
+drop policy if exists experts_public_apply on experts;
+create policy experts_public_apply on experts for insert with check (status = 'pending');
+
+-- ── Admin tam yetki (onay/red, premium, silme) ──────────────────────────────
+drop policy if exists experts_admin_select on experts;
+create policy experts_admin_select on experts for select using (is_admin());
+drop policy if exists experts_admin_update on experts;
+create policy experts_admin_update on experts for update using (is_admin()) with check (is_admin());
+drop policy if exists experts_admin_delete on experts;
+create policy experts_admin_delete on experts for delete using (is_admin());
+
+drop policy if exists companies_admin_select on companies;
+create policy companies_admin_select on companies for select using (is_admin());
+drop policy if exists companies_admin_update on companies;
+create policy companies_admin_update on companies for update using (is_admin()) with check (is_admin());
+drop policy if exists companies_admin_delete on companies;
+create policy companies_admin_delete on companies for delete using (is_admin());
+
+drop policy if exists appointments_admin_delete on appointments;
+create policy appointments_admin_delete on appointments for delete using (is_admin());
+
+-- ── Nöbetçi eczane: yazma artık yalnızca admin (Cron servis rolüyle çalışır) ─
+drop policy if exists pharmacy_demo_write on pharmacy_duty;
+drop policy if exists pharmacy_demo_delete on pharmacy_duty;
+drop policy if exists pharmacy_admin_write on pharmacy_duty;
+create policy pharmacy_admin_write on pharmacy_duty for insert with check (is_admin());
+drop policy if exists pharmacy_admin_delete on pharmacy_duty;
+create policy pharmacy_admin_delete on pharmacy_duty for delete using (is_admin());
