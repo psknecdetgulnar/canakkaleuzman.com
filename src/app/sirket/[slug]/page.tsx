@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { getCompanies, getCompanyBySlug, getJobListingsByCompany } from "@/lib/companies";
 import { ProfileHeaderBar } from "@/components/profile/ProfileHeaderBar";
 import { Footer } from "@/components/home/Footer";
-import { rootUrl, companyUrl } from "@/lib/site";
+import { rootUrl, companyUrl, safeExternalUrl } from "@/lib/site";
 import { companyJsonLd, breadcrumbJsonLd } from "@/lib/listSchema";
 import { JsonLd } from "@/components/JsonLd";
 
@@ -39,6 +39,7 @@ export default async function CompanyPage({
   const company = await getCompanyBySlug(slug);
   if (!company) notFound();
   const jobs = (await getJobListingsByCompany(company.id)).filter((j) => j.status === "open");
+  const websiteUrl = safeExternalUrl(company.website);
 
   return (
     <>
@@ -83,9 +84,9 @@ export default async function CompanyPage({
               <div className="mt-3 flex flex-col gap-2 text-sm text-[#102844]">
                 {company.phone && <a href={`tel:${company.phone.replace(/\s/g, "")}`} className="hover:text-[#c99a53]">{company.phone}</a>}
                 {company.email && <a href={`mailto:${company.email}`} className="hover:text-[#c99a53]">{company.email}</a>}
-                {company.website && <a href={company.website} target="_blank" rel="noopener noreferrer" className="hover:text-[#c99a53]">{company.website}</a>}
+                {websiteUrl && <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="hover:text-[#c99a53]">{company.website}</a>}
                 {company.address && <p>{company.address}</p>}
-                {!company.phone && !company.email && !company.website && !company.address && (
+                {!company.phone && !company.email && !websiteUrl && !company.address && (
                   <p className="text-[rgba(16,40,68,0.6)]">İletişim bilgisi paylaşılmamış.</p>
                 )}
               </div>

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ExpertProfile, ProfileSectionKey } from "@/data/experts";
 import { loadProfileOverride, type ProfileOverride } from "@/lib/profileStore";
 import { ExpertPhoto } from "@/components/ExpertPhoto";
-import { profileUrl } from "@/lib/site";
+import { profileUrl, safeExternalUrl } from "@/lib/site";
 import { createAppointment, getAppointments } from "@/lib/appointments";
 
 const TABS: { key: ProfileSectionKey; label: string }[] = [
@@ -113,17 +113,21 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
                 </div>
                 {profile.socials.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {profile.socials.map((s) => (
-                      <a
-                        key={s.type}
-                        href={s.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-full border border-[rgba(16,40,68,0.16)] px-3 py-1 text-xs font-semibold capitalize text-[#0d2c4b] hover:bg-[#f3eee6]"
-                      >
-                        {s.type}
-                      </a>
-                    ))}
+                    {profile.socials.map((s) => {
+                      const safeUrl = safeExternalUrl(s.url);
+                      if (!safeUrl) return null;
+                      return (
+                        <a
+                          key={s.type}
+                          href={safeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full border border-[rgba(16,40,68,0.16)] px-3 py-1 text-xs font-semibold capitalize text-[#0d2c4b] hover:bg-[#f3eee6]"
+                        >
+                          {s.type}
+                        </a>
+                      );
+                    })}
                   </div>
                 )}
               </>
