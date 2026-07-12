@@ -12,6 +12,7 @@ export type BlogPost = {
   readMinutes: number;
   excerpt: string;
   body: string[]; // paragraflar
+  published?: boolean; // panelden yazılan taslaklar false başlar; statik yazılar hep true
 };
 
 const basePosts: BlogPost[] = [

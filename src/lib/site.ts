@@ -11,3 +11,6 @@ export const profileUrl = (slug: string) => `https://${slug}.${ROOT_DOMAIN}`;
 
 // Blog yazısı kanonik URL'i (ana domain).
 export const blogUrl = (slug: string) => `https://${ROOT_DOMAIN}/blog/${slug}`;
+
+// Şirket sayfası kanonik URL'i (ana domain, subdomain kullanmaz).
+export const companyUrl = (slug: string) => `https://${ROOT_DOMAIN}/sirket/${slug}`;

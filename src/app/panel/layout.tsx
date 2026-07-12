@@ -18,6 +18,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <Link href="/panel/gelen-kutusu" className="transition-colors hover:text-[#c99a53]">
                 Gelen kutusu
               </Link>
+              <Link href="/panel/blog" className="transition-colors hover:text-[#c99a53]">
+                Blog
+              </Link>
               <Link href="/" className="transition-colors hover:text-[#c99a53]">
                 Dizine dön
               </Link>

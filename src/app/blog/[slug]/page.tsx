@@ -6,6 +6,7 @@ import { ProfileHeaderBar } from "@/components/profile/ProfileHeaderBar";
 import { Footer } from "@/components/home/Footer";
 import { rootUrl, blogUrl } from "@/lib/site";
 import { blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/listSchema";
+import { JsonLd } from "@/components/JsonLd";
 
 export const revalidate = 300;
 
@@ -27,7 +28,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPost(slug);
-  if (!post) return {};
+  if (!post || post.published === false) return {};
   return {
     title: `${post.title} | Çanakkale Uzman Blog`,
     description: post.excerpt,
@@ -49,28 +50,20 @@ export default async function BlogPostPage({
 }) {
   const { slug } = await params;
   const post = await getBlogPost(slug);
-  if (!post) notFound();
+  if (!post || post.published === false) notFound();
   const allPosts = await getBlogPosts();
   const related = allPosts.filter((p) => p.slug !== post.slug && p.category === post.category).slice(0, 2);
   const initials = post.authorName.split(" ").map((w) => w[0]).join("").slice(0, 2);
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd(post)) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
-            breadcrumbJsonLd([
-              { name: "Çanakkale Uzman", url: rootUrl("/") },
-              { name: "Blog", url: rootUrl("/blog") },
-              { name: post.title, url: blogUrl(post.slug) },
-            ])
-          ),
-        }}
+      <JsonLd data={blogPostingJsonLd(post)} />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Çanakkale Uzman", url: rootUrl("/") },
+          { name: "Blog", url: rootUrl("/blog") },
+          { name: post.title, url: blogUrl(post.slug) },
+        ])}
       />
       <ProfileHeaderBar />
       <main className="min-h-screen bg-[#fffdf9]">

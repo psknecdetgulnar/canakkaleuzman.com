@@ -12,6 +12,9 @@ const navItems = [
   { href: "#kategoriler", label: "Kategoriler" },
   { href: "#hakkimizda", label: "Hakkımızda" },
   { href: "/blog", label: "Blog" },
+  { href: "/sirketler", label: "Şirketler" },
+  { href: "/is-ilanlari", label: "İş İlanları" },
+  { href: "/nobetci-eczane", label: "Nöbetçi Eczane" },
   { href: "#iletisim", label: "İletişim" },
 ];
 

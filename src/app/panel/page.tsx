@@ -11,7 +11,8 @@ import { getAppointments } from "@/lib/appointments";
 // varsayılanlarıyla otomatik yayında kalır; bu panel yalnızca özelleştirmek
 // isteyen uzmanlar için isteğe bağlı bir araç setidir (Görev 5).
 export default function PanelHubPage() {
-  const { activeSlug, loading } = usePanelProfile();
+  const { experts, activeSlug, loading } = usePanelProfile();
+  const isPremium = Boolean(experts.find((e) => e.id === activeSlug)?.premium);
   const [pending, setPending] = useState<number | null>(null);
   const [customized, setCustomized] = useState<boolean | null>(null);
   const [calendarOn, setCalendarOn] = useState<boolean | null>(null);
@@ -48,7 +49,12 @@ export default function PanelHubPage() {
 
       {!loading && activeSlug && (
         <div className="grid gap-3 sm:grid-cols-3">
-          <StatCard label="Bekleyen randevu talebi" value={pending} accent={pending !== null && pending > 0} />
+          <StatCard
+            label="Bekleyen randevu talebi"
+            value={pending}
+            accent={pending !== null && pending > 0}
+            sublabel={!isPremium && pending !== null && pending > 0 ? "Detaylar premium'da" : undefined}
+          />
           <StatCard label="Profil özelleştirildi mi" value={customized === null ? null : customized ? "Evet" : "Hayır (varsayılan)"} />
           <StatCard label="Randevu takvimi" value={calendarOn === null ? null : calendarOn ? "Açık" : "Kapalı"} />
         </div>
@@ -63,21 +69,41 @@ export default function PanelHubPage() {
         <PanelLink
           href="/panel/gelen-kutusu"
           title="Gelen kutusu"
-          description="Ziyaretçilerin randevu talepleri; onayla, reddet veya WhatsApp'tan yaz."
+          description={
+            isPremium
+              ? "Ziyaretçilerin randevu talepleri; onayla, reddet veya WhatsApp'tan yaz."
+              : "Talep geldiğini bildirim olarak görürsün; ad/telefon/not premium'da açılır."
+          }
           badge={pending && pending > 0 ? `${pending} yeni` : undefined}
+        />
+        <PanelLink
+          href="/panel/blog"
+          title="Blog"
+          description="Görselsiz, sade metin yazılar ekle. Taslak kaydet veya doğrudan yayınla."
         />
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, accent }: { label: string; value: string | number | null; accent?: boolean }) {
+function StatCard({
+  label,
+  value,
+  accent,
+  sublabel,
+}: {
+  label: string;
+  value: string | number | null;
+  accent?: boolean;
+  sublabel?: string;
+}) {
   return (
     <div className="rounded-[12px] border border-[rgba(16,40,68,0.10)] bg-[#fffdf9] p-4">
       <div className="text-xs text-[rgba(16,40,68,0.6)]">{label}</div>
       <div className={`mt-1 font-display text-[1.6rem] font-semibold ${accent ? "text-[#c99a53]" : "text-[#0d2c4b]"}`}>
         {value === null ? "…" : value}
       </div>
+      {sublabel && <div className="mt-0.5 text-[0.7rem] text-[#c99a53]">🔒 {sublabel}</div>}
     </div>
   );
 }

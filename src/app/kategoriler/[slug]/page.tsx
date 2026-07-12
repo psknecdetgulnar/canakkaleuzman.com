@@ -9,6 +9,7 @@ import { ExpertCard } from "@/components/home/ExpertCard";
 import { CategoryIcon } from "@/components/home/Icons";
 import { rootUrl } from "@/lib/site";
 import { expertListJsonLd, breadcrumbJsonLd } from "@/lib/listSchema";
+import { JsonLd } from "@/components/JsonLd";
 
 export const revalidate = 300;
 
@@ -51,23 +52,13 @@ export default async function KategoriDetayPage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(expertListJsonLd(experts, `Çanakkale ${category.name}`, `/kategoriler/${category.slug}`)),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
-            breadcrumbJsonLd([
-              { name: "Çanakkale Uzman", url: rootUrl("/") },
-              { name: "Kategoriler", url: rootUrl("/kategoriler") },
-              { name: category.name, url: rootUrl(`/kategoriler/${category.slug}`) },
-            ])
-          ),
-        }}
+      <JsonLd data={expertListJsonLd(experts, `Çanakkale ${category.name}`, `/kategoriler/${category.slug}`)} />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Çanakkale Uzman", url: rootUrl("/") },
+          { name: "Kategoriler", url: rootUrl("/kategoriler") },
+          { name: category.name, url: rootUrl(`/kategoriler/${category.slug}`) },
+        ])}
       />
       <ProfileHeaderBar />
       <main className="min-h-screen bg-[#fffdf9]">

@@ -13,6 +13,7 @@ import {
 } from "@/lib/profileStore";
 import { usePanelProfile } from "@/components/panel/PanelProfileContext";
 import { ProfileSwitcher } from "@/components/panel/ProfileSwitcher";
+import { getAppointments, updateAppointmentNote, type Appointment } from "@/lib/appointments";
 
 const DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
 const DAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
@@ -60,6 +61,48 @@ export default function ProfilPanel() {
   const [base, setBase] = useState<ExpertProfile | null>(null);
   const [form, setForm] = useState<Form | null>(null);
   const [saved, setSaved] = useState(false);
+  // Kaydedilmemiş değişiklik uyarısı — "Profilde görünür" gibi anahtarlar
+  // Kaydet'e basılmadan yayına yansımaz; bunu açıkça göstermek gerekir.
+  const [dirty, setDirty] = useState(false);
+
+  // Takvim ızgarasında dolu (rezerve) hücreleri göstermek için randevular.
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+
+  useEffect(() => {
+    if (!activeSlug) return;
+    let active = true;
+    getAppointments(activeSlug).then((rows) => {
+      if (active) setAppointments(rows);
+    });
+    return () => {
+      active = false;
+    };
+  }, [activeSlug]);
+
+  const bookedMap = new Map(
+    appointments
+      .filter((a) => a.day && a.time && a.status !== "rejected" && a.status !== "cancelled")
+      .map((a) => [`${a.day}|${a.time}`, a])
+  );
+
+  function openAppt(a: Appointment) {
+    setSelectedAppt(a);
+    setNoteDraft(a.expertNote ?? "");
+  }
+
+  async function saveNote() {
+    if (!selectedAppt) return;
+    setNoteSaving(true);
+    const res = await updateAppointmentNote(selectedAppt.id, noteDraft);
+    if (res.ok) {
+      setAppointments((prev) => prev.map((a) => (a.id === selectedAppt.id ? { ...a, expertNote: noteDraft.trim() || null } : a)));
+      setSelectedAppt((prev) => (prev ? { ...prev, expertNote: noteDraft.trim() || null } : prev));
+    }
+    setNoteSaving(false);
+  }
 
   useEffect(() => {
     if (!activeSlug) return;
@@ -87,12 +130,25 @@ export default function ProfilPanel() {
           slots: ov?.calendar?.slots ?? [],
         });
         setSaved(false);
+        setDirty(false);
       }
     );
     return () => {
       active = false;
     };
   }, [activeSlug]);
+
+  // Kaydedilmemiş değişiklikle sekmeyi kapatmaya/ayrılmaya çalışırsa uyar —
+  // "Profilde görünür" gibi anahtarlar Kaydet'e basılmadan yayına yansımaz.
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
 
   if (!activeSlug || !form || !base) {
     return (
@@ -106,6 +162,7 @@ export default function ProfilPanel() {
   function set<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
     setSaved(false);
+    setDirty(true);
   }
 
   async function save() {
@@ -129,6 +186,7 @@ export default function ProfilPanel() {
     };
     await saveProfileOverride(activeSlug!, data);
     setSaved(true);
+    setDirty(false);
   }
 
   const visibleCount = SECTIONS.filter((s) => form.visibility[s.key]).length;
@@ -165,6 +223,7 @@ export default function ProfilPanel() {
       calendarEnabled: false, slots: [],
     });
     setSaved(false);
+    setDirty(false);
   }
 
   return (
@@ -337,15 +396,22 @@ export default function ProfilPanel() {
                       </td>
                       {DAYS.map((d) => {
                         const active = form!.slots.some((s) => s.day === d && s.time === h);
+                        const booked = bookedMap.get(`${d}|${h}`);
                         return (
                           <td key={d} className="border-b border-l border-[rgba(16,40,68,0.08)] p-1 text-center">
                             <button
                               type="button"
-                              onClick={() => toggleGridSlot(d, h)}
+                              onClick={() => (booked ? openAppt(booked) : toggleGridSlot(d, h))}
                               aria-pressed={active}
-                              aria-label={`${d} ${h} — ${active ? "müsait, kaldırmak için tıkla" : "müsait değil, eklemek için tıkla"}`}
+                              aria-label={
+                                booked
+                                  ? `${d} ${h} — dolu, detay için tıkla`
+                                  : `${d} ${h} — ${active ? "müsait, kaldırmak için tıkla" : "müsait değil, eklemek için tıkla"}`
+                              }
                               className={`h-7 w-full rounded-[4px] transition-colors ${
-                                active
+                                booked
+                                  ? "bg-[#c99a53] hover:bg-[#b98742]"
+                                  : active
                                   ? "bg-[#0d2c4b] hover:bg-[#143a60]"
                                   : "bg-[rgba(16,40,68,0.04)] hover:bg-[#f3eee6]"
                               }`}
@@ -358,6 +424,74 @@ export default function ProfilPanel() {
                 </tbody>
               </table>
             </div>
+
+            <div className="mt-2 flex flex-wrap gap-4 text-xs text-[rgba(16,40,68,0.6)]">
+              <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-[3px] bg-[#0d2c4b]" /> Müsait</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-[3px] bg-[#c99a53]" /> Dolu (randevu var) — tıklayınca detay</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-[3px] bg-[rgba(16,40,68,0.04)]" /> Boş</span>
+            </div>
+
+            {selectedAppt && (
+              <div className="mt-4 rounded-[10px] border border-[#c99a53] bg-[#fdf8f0] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#c99a53]">
+                      {[selectedAppt.day, selectedAppt.time].filter(Boolean).join(" ")} — dolu saat
+                    </p>
+                    {base!.premium ? (
+                      <>
+                        <p className="mt-1 font-semibold text-[#0d2c4b]">{selectedAppt.visitorName}</p>
+                        <a href={`tel:${selectedAppt.visitorPhone.replace(/\s/g, "")}`} className="text-sm text-[#102844] hover:text-[#c99a53]">
+                          {selectedAppt.visitorPhone}
+                        </a>
+                        {selectedAppt.note && <p className="mt-1 text-sm text-[#102844]">Ziyaretçi notu: &ldquo;{selectedAppt.note}&rdquo;</p>}
+                      </>
+                    ) : (
+                      <p className="mt-1 text-sm text-[#102844]">Ziyaretçi bilgileri premium&apos;da görünür.</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAppt(null)}
+                    className="text-sm text-[rgba(16,40,68,0.5)] hover:text-[#0d2c4b]"
+                    aria-label="Kapat"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {base!.premium ? (
+                  <div className="mt-3">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-[rgba(16,40,68,0.6)]">Uzman notu (yalnızca sen görürsün)</span>
+                      <textarea
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        rows={2}
+                        maxLength={500}
+                        className="rounded-[6px] border border-[rgba(16,40,68,0.14)] bg-[#fffdf9] p-2 text-sm text-[#0d2c4b] outline-none focus:border-[#c99a53]"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={noteSaving}
+                      onClick={saveNote}
+                      className="mt-2 rounded-[6px] bg-[#0d2c4b] px-4 py-2 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#143a60] disabled:opacity-50"
+                    >
+                      {noteSaving ? "Kaydediliyor…" : "Notu kaydet"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => alert("Premium üyelik yakında! Şimdilik profilin ücretsiz olarak yayında kalır.")}
+                    className="mt-3 rounded-[6px] bg-[#c99a53] px-4 py-2 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#b98742]"
+                  >
+                    Detayları görmek için premium&apos;a yükselt
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="mt-5 border-t border-[rgba(16,40,68,0.08)] pt-4">
               <p className="text-xs font-semibold text-[rgba(16,40,68,0.6)]">Özel saat ekle</p>
@@ -382,15 +516,35 @@ export default function ProfilPanel() {
         )}
       </div>
 
+      {/* Kaydedilmemiş değişiklik varsa açıkça uyar — takvim gibi değişiklikler
+          Kaydet'e basılmadan yayına yansımaz (bu, "takvim görünmüyor" şikayetinin
+          en olası nedenidir). */}
+      {dirty && (
+        <div className="rounded-[10px] border border-[#c99a53]/40 bg-[#c99a53]/10 px-4 py-3 text-sm text-[#0d2c4b]">
+          ⚠️ Kaydedilmemiş değişikliklerin var. Bu sayfadan ayrılmadan veya profili kontrol etmeden önce{" "}
+          <strong>Kaydet</strong>&apos;e bas — aksi halde değişiklikler (ör. randevu takvimi) yayına yansımaz.
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
-        <button onClick={save} className="rounded-[6px] bg-[#0d2c4b] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#143a60]">
-          Kaydet
+        <button
+          onClick={save}
+          className={`rounded-[6px] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors ${
+            dirty ? "bg-[#c99a53] hover:bg-[#b98742]" : "bg-[#0d2c4b] hover:bg-[#143a60]"
+          }`}
+        >
+          {dirty ? "Kaydet (değişiklik var)" : "Kaydet"}
         </button>
         <button onClick={reset} className="text-sm font-semibold text-[rgba(16,40,68,0.6)] hover:text-[#0d2c4b]">
           Varsayılana döndür
         </button>
-        {saved && <span className="text-sm text-[#0d2c4b]">Kaydedildi.</span>}
+        {saved && <span className="text-sm text-[#0d2c4b]">Kaydedildi. ✓</span>}
       </div>
+      {saved && (
+        <a href={`/uzman/${activeSlug}`} target="_blank" className="text-sm font-semibold text-[#0d2c4b] underline decoration-[#c99a53] underline-offset-4 hover:text-[#c99a53]">
+          Profilde önizle →
+        </a>
+      )}
     </div>
   );
 }

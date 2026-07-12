@@ -18,6 +18,8 @@ export type Appointment = {
   time: string | null;
   status: AppointmentStatus;
   createdAt: string;
+  // Uzmanın randevuya eklediği özel not (ziyaretçiye gösterilmez).
+  expertNote: string | null;
 };
 
 export type NewAppointment = {
@@ -54,6 +56,7 @@ function rowToAppointment(r: any): Appointment {
     time: r.slot_time,
     status: r.status,
     createdAt: r.created_at,
+    expertNote: r.expert_note ?? null,
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -76,5 +79,16 @@ export async function updateAppointmentStatus(
 ): Promise<{ ok: boolean; error?: string }> {
   if (!db) return { ok: false, error: "Bağlantı yok" };
   const { error } = await db.from("appointments").update({ status }).eq("id", id);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+// Uzmanın randevu için tuttuğu özel not (panel takvim ızgarasındaki dolu
+// hücreye tıklayınca doldurulur — ziyaretçiye gösterilmez).
+export async function updateAppointmentNote(
+  id: string,
+  note: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!db) return { ok: false, error: "Bağlantı yok" };
+  const { error } = await db.from("appointments").update({ expert_note: note.trim().slice(0, 500) || null }).eq("id", id);
   return error ? { ok: false, error: error.message } : { ok: true };
 }

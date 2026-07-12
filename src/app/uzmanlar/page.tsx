@@ -7,6 +7,7 @@ import { ProfileHeaderBar } from "@/components/profile/ProfileHeaderBar";
 import { Footer } from "@/components/home/Footer";
 import { rootUrl } from "@/lib/site";
 import { expertListJsonLd } from "@/lib/listSchema";
+import { JsonLd } from "@/components/JsonLd";
 
 export const metadata: Metadata = {
   title: "Tüm Uzmanlar | Çanakkale Uzman",
@@ -34,12 +35,7 @@ export default async function UzmanlarPage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(expertListJsonLd(experts, "Çanakkale Uzman — Tüm Uzmanlar", "/uzmanlar")),
-        }}
-      />
+      <JsonLd data={expertListJsonLd(experts, "Çanakkale Uzman — Tüm Uzmanlar", "/uzmanlar")} />
       <ProfileHeaderBar />
       <main className="min-h-screen bg-[#fffdf9]">
         <section className="border-b border-[rgba(16,40,68,0.08)] bg-[#f3eee6] px-5 py-10">

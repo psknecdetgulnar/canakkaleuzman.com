@@ -7,6 +7,7 @@ import { Footer } from "@/components/home/Footer";
 import { profileUrl, SITE_NAME } from "@/lib/site";
 import { expertPhoto } from "@/lib/avatar";
 import { expertJsonLd } from "@/lib/expertSchema";
+import { JsonLd } from "@/components/JsonLd";
 
 export const revalidate = 300;
 
@@ -53,10 +54,7 @@ export default async function UzmanPage({
   if (!profile) notFound();
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(expertJsonLd(profile)) }}
-      />
+      <JsonLd data={expertJsonLd(profile)} />
       <ProfileHeaderBar />
       <ProfileView profile={profile} />
       <Footer />

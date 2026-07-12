@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { categories, type CategorySlug } from "@/data/categories";
 import type { Expert } from "@/data/experts";
 import type { BlogPost } from "@/data/blog";
+import type { Company, JobListing } from "@/lib/companies";
 import { Header } from "./Header";
 import { Hero } from "./Hero";
 import { CategorySection } from "./CategorySection";
 import { ExpertSection } from "./ExpertSection";
 import { WhySection } from "./WhySection";
 import { HomeBlogSection } from "./HomeBlogSection";
+import { HomeCompaniesSection } from "./HomeCompaniesSection";
 import { JoinCta } from "./JoinCta";
 import { Footer } from "./Footer";
 import { Modal } from "./Modal";
@@ -24,7 +26,17 @@ const initialFilters: SearchFilters = {
   district: "all",
 };
 
-export function HomePage({ experts: allExperts, blogPosts }: { experts: Expert[]; blogPosts: BlogPost[] }) {
+export function HomePage({
+  experts: allExperts,
+  blogPosts,
+  companies,
+  jobs,
+}: {
+  experts: Expert[];
+  blogPosts: BlogPost[];
+  companies: Company[];
+  jobs: JobListing[];
+}) {
   const [filters, setFilters] = useState<SearchFilters>(initialFilters);
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const expertsRef = useRef<HTMLDivElement | null>(null);
@@ -65,6 +77,7 @@ export function HomePage({ experts: allExperts, blogPosts }: { experts: Expert[]
         </div>
         <WhySection />
         <HomeBlogSection posts={blogPosts} />
+        <HomeCompaniesSection companies={companies} jobs={jobs} />
         <JoinCta onJoinClick={() => setActiveModal({ type: "join" })} />
       </main>
       <Footer />
