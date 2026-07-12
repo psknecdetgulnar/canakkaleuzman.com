@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" role="img" aria-label="Finans temsili görsel">
+  <rect width="800" height="1000" fill="#EDE9E2"/>
+  <rect x="0.5" y="0.5" width="799" height="999" fill="none" stroke="rgba(20,24,28,0.08)"/>
+  <path d="M60 560 C200 520 300 590 420 545 S620 585 740 545" fill="none" stroke="rgba(20,24,28,0.10)" stroke-width="2"/>
+  <circle cx="420" cy="560" r="5" fill="#8A6A3B"/>
+  <text x="400" y="470" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="52" fill="#1F3A46" font-weight="500">Finans</text>
+  <text x="400" y="640" text-anchor="middle" font-family="Inter Tight, Arial, sans-serif" font-size="24" fill="rgba(20,24,28,0.56)">Çanakkale · temsili görsel</text>
+</svg>
