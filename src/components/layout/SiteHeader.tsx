@@ -11,26 +11,23 @@ type SiteHeaderProps = {
   onLoginClick?: () => void;
 };
 
-const mainNavItems = [
+// Tüm menü öğeleri doğrudan link — açılır menü (dropdown) kaldırıldı çünkü
+// fareyle-üzerine-gel davranışı mobil/dokunmatikte ve fare boşluğunda
+// güvenilmez çalışıyor, linkler "tıklanmıyor" gibi görünüyordu.
+const navItems = [
   { href: "/uzmanlar", label: "Uzmanlar" },
   { href: "/kategoriler", label: "Kategoriler" },
-  { href: "/blog", label: "Blog" },
-  { href: "/#hakkimizda", label: "Hakkımızda" },
-];
-
-const moreNavItems = [
   { href: "/sirketler", label: "Şirketler" },
   { href: "/is-ilanlari", label: "İş İlanları" },
   { href: "/nobetci-eczane", label: "Nöbetçi Eczane" },
+  { href: "/blog", label: "Blog" },
 ];
 
 export function SiteHeader({ onJoinClick, onLoginClick }: SiteHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const closeMenu = () => {
     setIsOpen(false);
-    setMoreOpen(false);
   };
 
   return (
@@ -45,46 +42,12 @@ export function SiteHeader({ onJoinClick, onLoginClick }: SiteHeaderProps) {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm font-semibold text-[#102844] lg:flex">
-          {mainNavItems.map((item) => (
+        <nav className="hidden items-center gap-5 text-sm font-semibold text-[#102844] lg:flex">
+          {navItems.map((item) => (
             <Link key={item.href} href={item.href} className="whitespace-nowrap transition-colors hover:text-[#c99a53]">
               {item.label}
             </Link>
           ))}
-
-          <div className="relative" onMouseEnter={() => setMoreOpen(true)} onMouseLeave={() => setMoreOpen(false)}>
-            <button
-              type="button"
-              onClick={() => setMoreOpen((v) => !v)}
-              className="flex items-center gap-1 whitespace-nowrap transition-colors hover:text-[#c99a53]"
-              aria-expanded={moreOpen}
-            >
-              Kurumsal
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="mt-px">
-                <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {moreOpen && (
-              <div className="absolute left-1/2 top-full w-48 -translate-x-1/2 pt-3">
-                <div className="flex flex-col rounded-[10px] border border-[rgba(16,40,68,0.10)] bg-[#fffdf9] py-2 shadow-[0_16px_40px_rgba(13,44,75,0.12)]">
-                  {moreNavItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={closeMenu}
-                      className="px-4 py-2.5 text-[#102844] transition-colors hover:bg-[#f3eee6] hover:text-[#c99a53]"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <Link href="/#iletisim" className="whitespace-nowrap transition-colors hover:text-[#c99a53]">
-            İletişim
-          </Link>
         </nav>
 
         <div className="hidden shrink-0 items-center gap-2.5 lg:flex">
@@ -140,7 +103,7 @@ export function SiteHeader({ onJoinClick, onLoginClick }: SiteHeaderProps) {
       {isOpen && (
         <div className="border-t border-[rgba(16,40,68,0.08)] bg-[#fffdf9] px-5 py-5 lg:hidden">
           <nav className="mx-auto flex max-w-[1080px] flex-col gap-4 text-sm font-semibold text-[#102844]">
-            {[...mainNavItems, ...moreNavItems, { href: "/#iletisim", label: "İletişim" }].map((item) => (
+            {[...navItems, { href: "/#hakkimizda", label: "Hakkımızda" }, { href: "/#iletisim", label: "İletişim" }].map((item) => (
               <Link key={item.href} href={item.href} onClick={closeMenu}>
                 {item.label}
               </Link>
