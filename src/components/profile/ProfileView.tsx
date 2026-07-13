@@ -6,6 +6,7 @@ import { loadProfileOverride, type ProfileOverride } from "@/lib/profileStore";
 import { ExpertPhoto } from "@/components/ExpertPhoto";
 import { profileUrl, safeExternalUrl } from "@/lib/site";
 import { createAppointment, getBookedSlots } from "@/lib/appointments";
+import { ShareProfileModal } from "./ShareProfileModal";
 
 const TABS: { key: ProfileSectionKey; label: string }[] = [
   { key: "about", label: "Hakkımda" },
@@ -44,6 +45,9 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
     .slice(0, 4);
   const [active, setActive] = useState<ProfileSectionKey>("about");
   const current = visibleTabs.find((t) => t.key === active) ? active : visibleTabs[0]?.key ?? "about";
+
+  // Instagram paylaşım kartı modalı ("Profili Paylaş" butonu açar).
+  const [shareOpen, setShareOpen] = useState(false);
 
   // Zaten talep edilmiş (reddedilmemiş/iptal olmamış) gün+saat çiftleri —
   // çifte rezervasyonu önlemek için takvimden gizlenir. Randevu tablosu artık
@@ -143,6 +147,13 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
             >
               Randevu talep et
             </a>
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              className="mt-2 block w-full rounded-[6px] border border-[rgba(16,40,68,0.2)] px-5 py-3 text-center text-sm font-semibold text-[#0d2c4b] transition-colors hover:border-[#c99a53] hover:text-[#c99a53]"
+            >
+              📸 Profili Paylaş
+            </button>
           </aside>
 
           {/* Sağ: başlık + rozetler + sekmeler */}
@@ -310,6 +321,18 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
           </section>
         </div>
       </div>
+
+      {/* Instagram paylaşım kartı */}
+      <ShareProfileModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        slug={profile.slug}
+        name={profile.name}
+        title={profile.title}
+        district={profile.district}
+        expertise={profile.expertiseAreas}
+        bio={profile.bio}
+      />
     </div>
   );
 }
