@@ -12,7 +12,18 @@ import {
 } from "@/data/experts";
 import { blogPosts as staticPosts, type BlogPost } from "@/data/blog";
 
+// EFEKTİF premium: admin'in belirlediği tarih aralığına göre okuma anında
+// hesaplanır — bitiş geçtiyse profil otomatik normale döner (cron gerekmez).
+// premium_from/premium_until public yüzeye ASLA çıkmaz; yalnızca sonuç boolean.
 /* eslint-disable @typescript-eslint/no-explicit-any */
+export function effectivePremium(r: any): boolean {
+  if (!r.premium) return false;
+  const now = Date.now();
+  if (r.premium_from && new Date(r.premium_from).getTime() > now) return false;
+  if (r.premium_until && new Date(r.premium_until).getTime() < now) return false;
+  return true;
+}
+
 function rowToExpert(r: any): Expert {
   return {
     id: r.id,
@@ -26,7 +37,7 @@ function rowToExpert(r: any): Expert {
     initials: r.initials,
     bio: r.bio ?? "",
     services: r.services ?? [],
-    premium: r.premium ?? false,
+    premium: effectivePremium(r),
   };
 }
 

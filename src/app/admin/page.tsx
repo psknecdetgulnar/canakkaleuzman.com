@@ -21,8 +21,28 @@ type ExpertRow = {
   phone: string | null;
   status: "pending" | "approved" | "rejected";
   premium: boolean;
+  premium_from: string | null;
+  premium_until: string | null;
   created_at: string;
 };
+
+// Efektif premium (tarih aralığına göre) — süre dolduysa rozet gösterilmez.
+function isPremiumNow(e: ExpertRow): boolean {
+  if (!e.premium) return false;
+  const now = Date.now();
+  if (e.premium_from && new Date(e.premium_from).getTime() > now) return false;
+  if (e.premium_until && new Date(e.premium_until).getTime() < now) return false;
+  return true;
+}
+
+function premiumPeriodLabel(e: ExpertRow): string {
+  if (!e.premium) return "";
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "numeric" });
+  if (!e.premium_from && !e.premium_until) return "Sonsuza kadar";
+  const from = e.premium_from ? fmt(e.premium_from) : "—";
+  const until = e.premium_until ? fmt(e.premium_until) : "∞";
+  return `${from} → ${until}`;
+}
 
 type CompanyRow = {
   id: string;
@@ -124,7 +144,7 @@ function Dashboard() {
   const refresh = useCallback(async () => {
     if (!authDb) return;
     const [e, c, m] = await Promise.all([
-      authDb.from("experts").select("id,name,title,category_label,district,phone,status,premium,created_at").order("created_at", { ascending: false }),
+      authDb.from("experts").select("id,name,title,category_label,district,phone,status,premium,premium_from,premium_until,created_at").order("created_at", { ascending: false }),
       authDb.from("companies").select("id,name,sector,phone,email,status,created_at").order("created_at", { ascending: false }),
       authDb.from("support_messages").select("*").order("created_at", { ascending: false }),
     ]);
@@ -145,10 +165,27 @@ function Dashboard() {
     setBusy(false);
   }
 
-  async function toggleExpertPremium(id: string, premium: boolean) {
+  // Premium'u tarih aralığıyla ver: forever=true → süresiz; değilse
+  // from/until (yerel gün başlangıcı / günü kapsasın diye gün sonu).
+  async function grantPremium(id: string, opts: { forever: boolean; from?: string; until?: string }) {
     if (!authDb) return;
     setBusy(true);
-    await authDb.from("experts").update({ premium }).eq("id", id);
+    await authDb
+      .from("experts")
+      .update({
+        premium: true,
+        premium_from: opts.forever || !opts.from ? null : new Date(`${opts.from}T00:00:00`).toISOString(),
+        premium_until: opts.forever || !opts.until ? null : new Date(`${opts.until}T23:59:59`).toISOString(),
+      })
+      .eq("id", id);
+    await refresh();
+    setBusy(false);
+  }
+
+  async function revokePremium(id: string) {
+    if (!authDb) return;
+    setBusy(true);
+    await authDb.from("experts").update({ premium: false, premium_from: null, premium_until: null }).eq("id", id);
     await refresh();
     setBusy(false);
   }
@@ -233,26 +270,30 @@ function Dashboard() {
             <Empty text="Kayıtlı uzman yok." />
           ) : (
             experts.filter((e) => e.status !== "pending").map((e) => (
-              <Card key={e.id}>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link href={`/uzman/${e.id}`} target="_blank" className="font-semibold text-[#0d2c4b] hover:text-[#c99a53]">{e.name}</Link>
-                    <Badge text={e.status === "approved" ? "Yayında" : "Reddedildi"} dark={e.status === "approved"} />
-                    {e.premium && <Badge text="Premium" gold />}
+              <div key={e.id} className="rounded-[14px] border border-[rgba(16,40,68,0.10)] bg-[#fffdf9] p-4 shadow-[0_10px_30px_rgba(13,44,75,0.05)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`/uzman/${e.id}`} target="_blank" className="font-semibold text-[#0d2c4b] hover:text-[#c99a53]">{e.name}</Link>
+                      <Badge text={e.status === "approved" ? "Yayında" : "Reddedildi"} dark={e.status === "approved"} />
+                      {isPremiumNow(e) && <Badge text="Premium" gold />}
+                      {e.premium && !isPremiumNow(e) && <Badge text="Premium süresi doldu" />}
+                    </div>
+                    <p className="mt-1 text-xs text-[rgba(16,40,68,0.6)]">
+                      {e.title} · {e.category_label} · {e.district}
+                      {e.premium && <span className="ml-2 text-[#c99a53]">🔒 {premiumPeriodLabel(e)}</span>}
+                    </p>
                   </div>
-                  <p className="mt-1 text-xs text-[rgba(16,40,68,0.6)]">{e.title} · {e.category_label} · {e.district}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {e.status === "approved" ? (
+                      <button type="button" disabled={busy} onClick={() => setExpertStatus(e.id, "rejected")} className="rounded-[6px] border border-[rgba(179,38,30,0.3)] px-3 py-1.5 text-xs font-semibold text-[#b3261e] hover:bg-[rgba(179,38,30,0.06)] disabled:opacity-50">Yayından kaldır</button>
+                    ) : (
+                      <button type="button" disabled={busy} onClick={() => setExpertStatus(e.id, "approved")} className="rounded-[6px] border border-[rgba(16,40,68,0.2)] px-3 py-1.5 text-xs font-semibold text-[#102844] hover:border-[#c99a53] disabled:opacity-50">Tekrar yayınla</button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" disabled={busy} onClick={() => toggleExpertPremium(e.id, !e.premium)} className="rounded-[6px] border border-[#c99a53] px-3 py-1.5 text-xs font-semibold text-[#c99a53] hover:bg-[#fdf3e9] disabled:opacity-50">
-                    {e.premium ? "Premium'u kaldır" : "Premium yap"}
-                  </button>
-                  {e.status === "approved" ? (
-                    <button type="button" disabled={busy} onClick={() => setExpertStatus(e.id, "rejected")} className="rounded-[6px] border border-[rgba(179,38,30,0.3)] px-3 py-1.5 text-xs font-semibold text-[#b3261e] hover:bg-[rgba(179,38,30,0.06)] disabled:opacity-50">Yayından kaldır</button>
-                  ) : (
-                    <button type="button" disabled={busy} onClick={() => setExpertStatus(e.id, "approved")} className="rounded-[6px] border border-[rgba(16,40,68,0.2)] px-3 py-1.5 text-xs font-semibold text-[#102844] hover:border-[#c99a53] disabled:opacity-50">Tekrar yayınla</button>
-                  )}
-                </div>
-              </Card>
+                <PremiumEditor expert={e} busy={busy} onGrant={grantPremium} onRevoke={revokePremium} />
+              </div>
             ))
           )}
         </div>
@@ -290,6 +331,94 @@ function Dashboard() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Premium tarih editörü: başlangıç/bitiş tarihi veya "Sonsuza kadar".
+// Bitiş geçince profil otomatik normale döner (efektif hesap okuma anında).
+// Bu tarihler yalnızca admin panelinde görünür — public yüzeye çıkmaz.
+function PremiumEditor({
+  expert,
+  busy,
+  onGrant,
+  onRevoke,
+}: {
+  expert: ExpertRow;
+  busy: boolean;
+  onGrant: (id: string, opts: { forever: boolean; from?: string; until?: string }) => void;
+  onRevoke: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const toDateInput = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 10) : "");
+  const today = new Date().toISOString().slice(0, 10);
+  const [forever, setForever] = useState(expert.premium && !expert.premium_from && !expert.premium_until);
+  const [from, setFrom] = useState(toDateInput(expert.premium_from) || today);
+  const [until, setUntil] = useState(toDateInput(expert.premium_until));
+
+  if (!open) {
+    return (
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-[rgba(16,40,68,0.08)] pt-3">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setOpen(true)}
+          className="rounded-[6px] border border-[#c99a53] px-3 py-1.5 text-xs font-semibold text-[#c99a53] hover:bg-[#fdf3e9] disabled:opacity-50"
+        >
+          {expert.premium ? "Premium süresini düzenle" : "Premium yap"}
+        </button>
+        {expert.premium && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onRevoke(expert.id)}
+            className="rounded-[6px] border border-[rgba(179,38,30,0.3)] px-3 py-1.5 text-xs font-semibold text-[#b3261e] hover:bg-[rgba(179,38,30,0.06)] disabled:opacity-50"
+          >
+            Premium'u kaldır
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-[10px] border border-[#c99a53] bg-[#fdf3e9] p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-[#c99a53]">Premium süresi</p>
+      <label className="mt-3 flex items-center gap-2 text-sm text-[#102844]">
+        <input type="checkbox" checked={forever} onChange={(e) => setForever(e.target.checked)} className="h-4 w-4 accent-[#c99a53]" />
+        Sonsuza kadar
+      </label>
+      {!forever && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-[rgba(16,40,68,0.6)]">Başlangıç</span>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-10 rounded-[6px] border border-[rgba(16,40,68,0.14)] bg-[#fffdf9] px-3 text-sm text-[#0d2c4b] outline-none focus:border-[#c99a53]" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-[rgba(16,40,68,0.6)]">Bitiş (o gün dahil)</span>
+            <input type="date" value={until} onChange={(e) => setUntil(e.target.value)} min={from} className="h-10 rounded-[6px] border border-[rgba(16,40,68,0.14)] bg-[#fffdf9] px-3 text-sm text-[#0d2c4b] outline-none focus:border-[#c99a53]" />
+          </label>
+        </div>
+      )}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy || (!forever && !until)}
+          onClick={() => {
+            onGrant(expert.id, { forever, from, until });
+            setOpen(false);
+          }}
+          className="rounded-[6px] bg-[#0d2c4b] px-4 py-2 text-sm font-semibold text-[#fffdf9] hover:bg-[#143a60] disabled:opacity-50"
+        >
+          Kaydet
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="rounded-[6px] px-4 py-2 text-sm font-semibold text-[rgba(16,40,68,0.6)] hover:text-[#0d2c4b]">
+          Vazgeç
+        </button>
+        {!forever && !until && (
+          <span className="self-center text-xs text-[#b3261e]">Bitiş tarihi seç veya &ldquo;Sonsuza kadar&rdquo;yı işaretle.</span>
+        )}
+      </div>
     </div>
   );
 }
