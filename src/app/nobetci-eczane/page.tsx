@@ -12,11 +12,26 @@ export const metadata: Metadata = {
   alternates: { canonical: rootUrl("/nobetci-eczane") },
 };
 
+const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const WEEKDAYS = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+
 function formatDate(iso: string) {
-  const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-  const days = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
   const d = new Date(`${iso}T00:00:00`);
-  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function shortDate(d: Date) {
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
+// Nöbet, bir günün sabahından ertesi günün sabahına kadar sürer (tipik devir
+// saati 08:30). "12 Temmuz'u 13 Temmuz'a bağlayan gece" biçiminde, hangi iki
+// günü birbirine bağladığını açıkça gösterir.
+function dutyNightLabel(iso: string) {
+  const start = new Date(`${iso}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return `${shortDate(start)} → ${shortDate(end)} gecesi (08:30 – 08:30)`;
 }
 
 export default async function PharmacyDutyPage() {
@@ -30,6 +45,9 @@ export default async function PharmacyDutyPage() {
           <div className="mx-auto max-w-[760px]">
             <h1 className="font-display text-[2.4rem] font-semibold text-[#0d2c4b] md:text-[3rem]">Nöbetçi Eczaneler</h1>
             <p className="mt-2 text-[#102844]">{formatDate(date)} — Çanakkale</p>
+            <p className="mt-1 inline-flex items-center gap-2 rounded-full bg-[#0d2c4b] px-3.5 py-1.5 text-sm font-semibold text-[#fffdf9]">
+              🌙 {dutyNightLabel(date)}
+            </p>
           </div>
         </section>
 
@@ -63,7 +81,8 @@ export default async function PharmacyDutyPage() {
               </ul>
             )}
             <p className="mt-6 text-xs text-[rgba(16,40,68,0.5)]">
-              Liste, eczacı odası duyurularına göre elle güncellenir. Acil durumlarda 112&apos;yi arayın.
+              Liste her sabah saat 10:00&apos;da güncellenir. Nöbet, gösterilen günün sabahından ertesi
+              günün sabahına kadar (08:30 – 08:30) sürer. Acil durumlarda 112&apos;yi arayın.
             </p>
           </div>
         </section>

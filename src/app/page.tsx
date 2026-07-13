@@ -29,6 +29,7 @@ export default async function Page() {
       companies={companies}
       jobs={jobs}
       pharmacies={pharmacyResult.pharmacies}
+      pharmacyDate={pharmacyResult.date}
     />
   );
 }

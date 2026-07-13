@@ -36,12 +36,14 @@ export function HomePage({
   companies,
   jobs,
   pharmacies,
+  pharmacyDate,
 }: {
   experts: Expert[];
   blogPosts: BlogPost[];
   companies: Company[];
   jobs: JobListing[];
   pharmacies: PharmacyDuty[];
+  pharmacyDate?: string;
 }) {
   const [filters, setFilters] = useState<SearchFilters>(initialFilters);
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
@@ -75,7 +77,7 @@ export function HomePage({
   return (
     <div className="min-h-screen overflow-x-clip bg-[#fffdf9]">
       <Header onJoinClick={() => setActiveModal({ type: "join" })} onLoginClick={() => setActiveModal({ type: "login" })} />
-      <HomePharmacyBanner pharmacies={pharmacies} />
+      <HomePharmacyBanner pharmacies={pharmacies} date={pharmacyDate} />
       <main>
         <Hero filters={filters} onFilterChange={setFilters} onSearch={scrollToExperts} />
         <CategorySection activeCategory={filters.category} onSelect={selectCategory} />

@@ -1,10 +1,20 @@
 import Link from "next/link";
 import type { PharmacyDuty } from "@/lib/pharmacy";
 
+const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+// Nöbet, gösterilen günün sabahından ertesi güne (08:30 – 08:30) sürer.
+function dutyNight(iso: string) {
+  const start = new Date(`${iso}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return `${start.getDate()} ${MONTHS[start.getMonth()]} → ${end.getDate()} ${MONTHS[end.getMonth()]}`;
+}
+
 // Sayfanın en tepesinde, ilk göze çarpan şerit: bugün nöbetçi olan
 // eczaneler. Herkesin işine yarayan pratik bir bilgi olduğu için dizinin
 // önüne (Hero'nun bile üstüne) alındı.
-export function HomePharmacyBanner({ pharmacies }: { pharmacies: PharmacyDuty[] }) {
+export function HomePharmacyBanner({ pharmacies, date }: { pharmacies: PharmacyDuty[]; date?: string }) {
   if (pharmacies.length === 0) return null;
 
   return (
@@ -16,8 +26,13 @@ export function HomePharmacyBanner({ pharmacies }: { pharmacies: PharmacyDuty[] 
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#c0392b]" />
           </span>
           <span className="whitespace-nowrap text-xs font-bold uppercase tracking-wide text-[#c0392b]">
-            Bugün Nöbetçi
+            Nöbetçi Eczane
           </span>
+          {date && (
+            <span className="hidden whitespace-nowrap text-xs font-semibold text-[#7a4f1a] sm:inline">
+              🌙 {dutyNight(date)} gecesi
+            </span>
+          )}
         </div>
 
         <div className="flex flex-1 gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

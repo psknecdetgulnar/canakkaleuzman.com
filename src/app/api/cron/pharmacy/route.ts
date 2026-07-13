@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Vercel Cron: her gün çalışır, önümüzdeki 7 gün için nöbetçi eczane kaydı
-// olmayan günleri havuzdan dönüşümlü (round-robin) doldurur. Elle girilen
-// günlere DOKUNMAZ — yalnızca boş günleri tamamlar; böylece admin gerçek
-// listeyi girdiğinde otomatik veri onu ezmez.
-// Not: Gerçek eczacı odası verisi bulunduğunda havuz yerine o kaynak bağlanır.
+// Vercel Cron: her sabah 10:00 (TR / 07:00 UTC — bkz. vercel.json) çalışır,
+// önümüzdeki 7 gün için nöbetçi eczane kaydı olmayan günleri havuzdan
+// dönüşümlü (round-robin) doldurur. Elle girilen günlere DOKUNMAZ — yalnızca
+// boş günleri tamamlar; böylece admin gerçek listeyi girdiğinde otomatik veri
+// onu ezmez.
+// Not: Gerçek NosyAPI verisi bağlandığında havuz yerine o kaynak kullanılacak.
+// Nöbet, kaydın duty_date sabahından ertesi güne (08:30 – 08:30) kadardır.
 
 const POOL = [
   { name: "Truva Eczanesi", district: "Merkez", address: "Cumhuriyet Meydanı No:3", phone: "+90 286 555 40 01" },
