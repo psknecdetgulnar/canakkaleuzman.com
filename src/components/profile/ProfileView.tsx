@@ -7,6 +7,7 @@ import { ExpertPhoto } from "@/components/ExpertPhoto";
 import { profileUrl, safeExternalUrl } from "@/lib/site";
 import { createAppointment, getBookedSlots } from "@/lib/appointments";
 import { ShareProfileModal } from "./ShareProfileModal";
+import { track } from "@/lib/analytics";
 
 const TABS: { key: ProfileSectionKey; label: string }[] = [
   { key: "about", label: "Hakkımda" },
@@ -48,6 +49,11 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
 
   // Instagram paylaşım kartı modalı ("Profili Paylaş" butonu açar).
   const [shareOpen, setShareOpen] = useState(false);
+
+  // Analitik: sayfa görüntülenmesi (bir kez, kişisel veri yok).
+  useEffect(() => {
+    track("profile_view", base.slug);
+  }, [base.slug]);
 
   // Zaten talep edilmiş (reddedilmemiş/iptal olmamış) gün+saat çiftleri —
   // çifte rezervasyonu önlemek için takvimden gizlenir. Randevu tablosu artık
@@ -102,7 +108,13 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
             </div>
             {profile.premium ? (
               <>
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 space-y-2" onClickCapture={(e) => {
+                  // Dönüşüm takibi: tıklanan iletişim kanalını kaydet (PII yok).
+                  const href = (e.target as HTMLElement).closest("a")?.getAttribute("href") ?? "";
+                  if (href.startsWith("tel:")) track("phone_click", base.slug);
+                  else if (href.startsWith("mailto:")) track("email_click", base.slug);
+                  else if (href.includes("wa.me")) track("whatsapp_click", base.slug);
+                }}>
                   {profile.email && (
                     <ContactRow label="Bana yazın" value={profile.email} href={`mailto:${profile.email}`} icon="✉" />
                   )}
@@ -149,7 +161,10 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
             </a>
             <button
               type="button"
-              onClick={() => setShareOpen(true)}
+              onClick={() => {
+                track("share", base.slug);
+                setShareOpen(true);
+              }}
               className="mt-2 block w-full rounded-[6px] border border-[rgba(16,40,68,0.2)] px-5 py-3 text-center text-sm font-semibold text-[#0d2c4b] transition-colors hover:border-[#c99a53] hover:text-[#c99a53]"
             >
               📸 Profili Paylaş
