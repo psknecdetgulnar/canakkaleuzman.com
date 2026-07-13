@@ -235,7 +235,7 @@ function CompanyJoinForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form className="space-y-4" onSubmit={submit}>
-      <Field label="Şirket adı" placeholder="Örn. Atlas Tıp Merkezi" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
+      <Field label="Şirket adı" placeholder="Şirketinizin adı" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
       <Field label="Sektör" placeholder="Örn. Sağlık" value={form.sector} onChange={(v) => setForm((f) => ({ ...f, sector: v }))} />
       <Field label="Telefon" placeholder="+90 5XX XXX XX XX" value={form.phone} onChange={(v) => setForm((f) => ({ ...f, phone: v }))} />
       {error && <p className="text-sm text-[#b3261e]">{error}</p>}
