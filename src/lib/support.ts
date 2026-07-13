@@ -1,11 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+import { sb as db } from "@/lib/supabaseClient";
 
 // Kullanıcı ↔ admin destek hattı. Uzman/şirket panellerindeki "Destek"
 // sayfasından gönderilir; admin /admin panelinden cevaplar, cevap aynı
 // kaydın admin_reply alanına yazılır ve kullanıcı panelinde görünür.
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const db = url && key && !url.includes("xxxx") ? createClient(url, key, { auth: { persistSession: false } }) : null;
+// RLS: gönderme herkese açık; okuma yalnızca gönderenin sahibi veya admin.
 
 export type SupportSenderType = "uzman" | "sirket" | "ziyaretci";
 

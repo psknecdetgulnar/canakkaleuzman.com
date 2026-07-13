@@ -1,9 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { sb as db } from "@/lib/supabaseClient";
 
-// Nöbetçi eczane listesi — pratik/manuel yaklaşım (bkz. schema.sql notu).
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const db = url && key && !url.includes("xxxx") ? createClient(url, key, { auth: { persistSession: false } }) : null;
+// Nöbetçi eczane listesi — okuma herkese açık; yazma admin/Cron (servis rolü).
 
 export type PharmacyDuty = {
   id: string;

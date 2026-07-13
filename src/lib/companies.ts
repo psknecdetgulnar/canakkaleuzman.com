@@ -1,10 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { sb as db } from "@/lib/supabaseClient";
 
 // Şirket tanıtım profilleri + iş ilanları → Supabase.
-// RLS: anon insert/update demo modda açık (Faz-auth'ta sahibe kilitlenecek).
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const db = url && key && !url.includes("xxxx") ? createClient(url, key, { auth: { persistSession: false } }) : null;
+// RLS: yazma yalnızca şirket sahibi (owner_id) veya admin; halka açık okuma
+// yalnızca approved. Paylaşılan oturumlu istemci JWT'yi taşır.
 
 export type Company = {
   id: string;
@@ -94,6 +92,17 @@ export async function getCompanies(): Promise<Company[]> {
   return data.map(rowToCompany);
 }
 
+// Giriş yapan kullanıcının kendi şirketi (her statüde — RLS owner_select izin verir).
+export async function getMyCompany(): Promise<Company | null> {
+  if (!db) return null;
+  const { data: userData } = await db.auth.getUser();
+  const uid = userData?.user?.id;
+  if (!uid) return null;
+  const { data, error } = await db.from("companies").select("*").eq("owner_id", uid).maybeSingle();
+  if (error || !data) return null;
+  return rowToCompany(data);
+}
+
 export async function getCompanyBySlug(slug: string): Promise<Company | null> {
   if (!db) return null;
   const { data, error } = await db.from("companies").select("*").eq("id", slug).maybeSingle();
@@ -111,29 +120,35 @@ export type NewCompany = {
   address?: string;
 };
 
+// Şirket kaydı — RLS gereği yalnızca oturumlu kullanıcı (owner_id = auth.uid()).
 export async function createCompany(c: NewCompany): Promise<{ ok: boolean; error?: string; id?: string }> {
   if (!db) return { ok: false, error: "Bağlantı yok" };
+  const { data: userData } = await db.auth.getUser();
+  const ownerId = userData?.user?.id;
+  if (!ownerId) return { ok: false, error: "Şirket oluşturmak için giriş yapmalısın." };
   const base = slugify(c.name).slice(0, 60) || "sirket";
-  let id = base;
-  for (let i = 1; i < 50; i++) {
-    const { data: existing } = await db.from("companies").select("id").eq("id", id).maybeSingle();
-    if (!existing) break;
-    id = `${base}-${i + 1}`;
-  }
   const initials = c.name.split(" ").map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-  const { error } = await db.from("companies").insert({
-    id,
-    name: c.name.trim().slice(0, 160),
-    sector: c.sector,
-    description: c.description?.trim().slice(0, 1000) || null,
-    logo_initials: initials || "??",
-    website: c.website?.trim() || null,
-    phone: c.phone?.trim() || null,
-    email: c.email?.trim() || null,
-    address: c.address?.trim() || null,
-    status: "approved",
-  });
-  return error ? { ok: false, error: error.message } : { ok: true, id };
+  // Bekleyen/başka sahiplerin kayıtları anon select'e kapalı olabileceğinden
+  // çakışma önceden görülemez; PK çakışmasında (23505) sonekle yeniden dene.
+  for (let i = 0; i < 20; i++) {
+    const id = i === 0 ? base : `${base}-${i + 1}`;
+    const { error } = await db.from("companies").insert({
+      id,
+      name: c.name.trim().slice(0, 160),
+      sector: c.sector,
+      description: c.description?.trim().slice(0, 1000) || null,
+      logo_initials: initials || "??",
+      website: c.website?.trim() || null,
+      phone: c.phone?.trim() || null,
+      email: c.email?.trim() || null,
+      address: c.address?.trim() || null,
+      status: "approved",
+      owner_id: ownerId,
+    });
+    if (!error) return { ok: true, id };
+    if (error.code !== "23505") return { ok: false, error: error.message };
+  }
+  return { ok: false, error: "Uygun bir sayfa adresi bulunamadı, lütfen bizimle iletişime geçin." };
 }
 
 export async function updateCompany(

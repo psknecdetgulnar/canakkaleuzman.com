@@ -9,6 +9,7 @@ import type { Company, JobListing } from "@/lib/companies";
 import type { PharmacyDuty } from "@/lib/pharmacy";
 import { createCompany } from "@/lib/companies";
 import { createExpertApplication } from "@/lib/db";
+import { signIn, signUpUser } from "@/lib/adminAuth";
 import { Header } from "./Header";
 import { Hero } from "./Hero";
 import { HomePharmacyBanner } from "./HomePharmacyBanner";
@@ -98,7 +99,7 @@ export function HomePage({
       )}
       {activeModal?.type === "login" && (
         <Modal title="Giriş yap" onClose={() => setActiveModal(null)}>
-          <LoginForm />
+          <LoginForm onDone={() => setActiveModal(null)} />
         </Modal>
       )}
     </div>
@@ -137,19 +138,34 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
 }
 
 function ExpertJoinForm() {
-  const [form, setForm] = useState({ name: "", title: "", category: categories[0].slug as string, phone: "" });
+  const [form, setForm] = useState({
+    name: "",
+    title: "",
+    category: categories[0].slug as string,
+    phone: "",
+    email: "",
+    password: "",
+  });
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<"ok" | "confirm" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!form.name.trim() || !form.title.trim() || !form.phone.trim()) {
+    if (!form.name.trim() || !form.title.trim() || !form.phone.trim() || !form.email.trim() || !form.password) {
       setError("Tüm alanlar zorunludur.");
       return;
     }
     setBusy(true);
     setError(null);
+    // 1) Gerçek hesap: Supabase Auth (role: uzman)
+    const acc = await signUpUser(form.email, form.password, "uzman");
+    if (!acc.ok || !acc.userId) {
+      setBusy(false);
+      setError(acc.error ?? "Hesap oluşturulamadı.");
+      return;
+    }
+    // 2) Başvuru profili (pending) — hesabına owner_id ile bağlanır.
     const cat = categories.find((c) => c.slug === form.category) ?? categories[0];
     const res = await createExpertApplication({
       name: form.name,
@@ -157,9 +173,10 @@ function ExpertJoinForm() {
       category: cat.slug,
       categoryLabel: cat.name,
       phone: form.phone,
+      ownerId: acc.userId,
     });
     setBusy(false);
-    if (res.ok) setDone(true);
+    if (res.ok) setDone(acc.needsConfirm ? "confirm" : "ok");
     else setError(res.error ?? "Başvuru gönderilemedi.");
   }
 
@@ -168,8 +185,9 @@ function ExpertJoinForm() {
       <div className="rounded-[8px] bg-[#f3eee6] p-4 text-sm leading-6 text-[#102844]">
         <p className="font-semibold text-[#0d2c4b]">Başvurun alındı! 🎉</p>
         <p className="mt-1">
-          Profilin ekibimiz tarafından incelenecek ve onaylandığında dizinde yayına girecek.
-          Telefonundan sana ulaşacağız.
+          {done === "confirm"
+            ? "Önce e-posta adresine gelen doğrulama bağlantısına tıkla. Profilin ekibimiz tarafından onaylandığında yayına girecek; ardından e-posta ve şifrenle giriş yapıp panelini kullanabilirsin."
+            : "Profilin ekibimiz tarafından incelenecek ve onaylandığında dizinde yayına girecek. E-posta ve şifrenle giriş yapıp panelinden durumu takip edebilirsin."}
         </p>
       </div>
     );
@@ -192,17 +210,19 @@ function ExpertJoinForm() {
         </select>
       </label>
       <Field label="Telefon" placeholder="+90 5XX XXX XX XX" value={form.phone} onChange={(v) => setForm((f) => ({ ...f, phone: v }))} />
+      <Field label="E-posta" placeholder="ornek@mail.com" type="email" value={form.email} onChange={(v) => setForm((f) => ({ ...f, email: v }))} />
+      <Field label="Şifre" placeholder="En az 6 karakter" type="password" value={form.password} onChange={(v) => setForm((f) => ({ ...f, password: v }))} />
       {error && <p className="text-sm text-[#b3261e]">{error}</p>}
       <button
         type="submit"
         disabled={busy}
         className="w-full rounded-[6px] bg-[#c99a53] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#b98742] disabled:opacity-50"
       >
-        {busy ? "Gönderiliyor…" : "Başvuruyu gönder"}
+        {busy ? "Gönderiliyor…" : "Hesap oluştur ve başvur"}
       </button>
       <p className="text-xs leading-5 text-[rgba(16,40,68,0.6)]">
         Başvurun admin onayından geçtikten sonra profilin yayına girer. Sağlık ve hukuk
-        branşlarında diploma/ruhsat belgesi istenir.
+        branşlarında diploma/ruhsat belgesi istenir. Paneline e-posta ve şifrenle girersin.
       </p>
     </form>
   );
@@ -210,18 +230,33 @@ function ExpertJoinForm() {
 
 function CompanyJoinForm({ onDone }: { onDone: () => void }) {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", sector: "", phone: "" });
+  const [form, setForm] = useState({ name: "", sector: "", phone: "", email: "", password: "" });
   const [busy, setBusy] = useState(false);
+  const [confirmMsg, setConfirmMsg] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!form.name.trim()) {
-      setError("Şirket adı zorunludur.");
+    if (!form.name.trim() || !form.email.trim() || !form.password) {
+      setError("Şirket adı, e-posta ve şifre zorunludur.");
       return;
     }
     setBusy(true);
     setError(null);
+    // 1) Gerçek hesap: Supabase Auth (role: sirket)
+    const acc = await signUpUser(form.email, form.password, "sirket");
+    if (!acc.ok) {
+      setBusy(false);
+      setError(acc.error ?? "Hesap oluşturulamadı.");
+      return;
+    }
+    if (acc.needsConfirm) {
+      // E-posta doğrulaması açık: şirket kaydı girişten sonra panelde tamamlanır.
+      setBusy(false);
+      setConfirmMsg(true);
+      return;
+    }
+    // 2) Oturum açıldı — şirket sayfasını sahibiyle oluştur.
     const res = await createCompany({ name: form.name, sector: form.sector || "Diğer", phone: form.phone });
     setBusy(false);
     if (res.ok && res.id) {
@@ -233,40 +268,75 @@ function CompanyJoinForm({ onDone }: { onDone: () => void }) {
     }
   }
 
+  if (confirmMsg) {
+    return (
+      <div className="rounded-[8px] bg-[#f3eee6] p-4 text-sm leading-6 text-[#102844]">
+        <p className="font-semibold text-[#0d2c4b]">Hesabın oluşturuldu! 🎉</p>
+        <p className="mt-1">
+          E-posta adresine gelen doğrulama bağlantısına tıkla, ardından giriş yapıp şirket
+          panelinden sayfanı oluşturabilirsin.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <form className="space-y-4" onSubmit={submit}>
       <Field label="Şirket adı" placeholder="Şirketinizin adı" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
       <Field label="Sektör" placeholder="Örn. Sağlık" value={form.sector} onChange={(v) => setForm((f) => ({ ...f, sector: v }))} />
       <Field label="Telefon" placeholder="+90 5XX XXX XX XX" value={form.phone} onChange={(v) => setForm((f) => ({ ...f, phone: v }))} />
+      <Field label="E-posta" placeholder="ornek@mail.com" type="email" value={form.email} onChange={(v) => setForm((f) => ({ ...f, email: v }))} />
+      <Field label="Şifre" placeholder="En az 6 karakter" type="password" value={form.password} onChange={(v) => setForm((f) => ({ ...f, password: v }))} />
       {error && <p className="text-sm text-[#b3261e]">{error}</p>}
       <button
         type="submit"
         disabled={busy}
         className="w-full rounded-[6px] bg-[#c99a53] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#b98742] disabled:opacity-50"
       >
-        {busy ? "Oluşturuluyor…" : "Şirket sayfamı oluştur"}
+        {busy ? "Oluşturuluyor…" : "Hesap oluştur ve sayfamı aç"}
       </button>
+      <p className="text-xs leading-5 text-[rgba(16,40,68,0.6)]">
+        Şirket paneline e-posta ve şifrenle girersin.
+      </p>
     </form>
   );
 }
 
-function LoginForm() {
+function LoginForm({ onDone }: { onDone: () => void }) {
   const router = useRouter();
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!form.email.trim() || !form.password) {
+      setError("E-posta ve şifre zorunludur.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const res = await signIn(form.email, form.password);
+    setBusy(false);
+    if (res.ok && res.redirect) {
+      onDone();
+      router.push(res.redirect);
+    } else {
+      setError(res.error ?? "Giriş başarısız.");
+    }
+  }
+
   return (
-    <form
-      className="space-y-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        router.push("/panel");
-      }}
-    >
-      <Field label="E-posta" placeholder="ornek@mail.com" type="email" />
-      <Field label="Şifre" placeholder="••••••••" type="password" />
+    <form className="space-y-4" onSubmit={submit}>
+      <Field label="E-posta" placeholder="ornek@mail.com" type="email" value={form.email} onChange={(v) => setForm((f) => ({ ...f, email: v }))} />
+      <Field label="Şifre" placeholder="••••••••" type="password" value={form.password} onChange={(v) => setForm((f) => ({ ...f, password: v }))} />
+      {error && <p className="text-sm text-[#b3261e]">{error}</p>}
       <button
         type="submit"
-        className="w-full rounded-[6px] bg-[#0d2c4b] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#143a60]"
+        disabled={busy}
+        className="w-full rounded-[6px] bg-[#0d2c4b] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#143a60] disabled:opacity-50"
       >
-        Giriş yap
+        {busy ? "Giriş yapılıyor…" : "Giriş yap"}
       </button>
     </form>
   );

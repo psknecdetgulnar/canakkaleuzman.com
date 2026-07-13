@@ -1,6 +1,8 @@
 // Supabase veri erişim katmanı (statik yedekli).
 // Supabase yapılandırılmamışsa veya erişilemezse data/ statik verisine düşer.
-import { createClient } from "@supabase/supabase-js";
+// Paylaşılan istemci: tarayıcıda oturum taşır (panel yazmaları RLS'ten geçer),
+// sunucuda salt anon okuma yapar.
+import { sb as db } from "@/lib/supabaseClient";
 import {
   experts as staticExperts,
   getExpertProfile,
@@ -9,11 +11,6 @@ import {
   type ExpertProfile,
 } from "@/data/experts";
 import { blogPosts as staticPosts, type BlogPost } from "@/data/blog";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const configured = Boolean(url && key && !url.includes("xxxx"));
-const db = configured ? createClient(url!, key!, { auth: { persistSession: false } }) : null;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function rowToExpert(r: any): Expert {
@@ -204,6 +201,7 @@ export type ExpertApplication = {
   categoryLabel: string;
   phone: string;
   district?: string;
+  ownerId?: string;      // Supabase Auth kullanıcı id'si (kayıt akışından gelir)
 };
 
 export async function createExpertApplication(a: ExpertApplication): Promise<{ ok: boolean; error?: string; id?: string }> {
@@ -224,11 +222,23 @@ export async function createExpertApplication(a: ExpertApplication): Promise<{ o
       initials,
       phone: a.phone.trim().slice(0, 40) || null,
       status: "pending",
+      owner_id: a.ownerId ?? null,
     });
     if (!error) return { ok: true, id };
     if (error.code !== "23505") return { ok: false, error: error.message };
   }
   return { ok: false, error: "Uygun bir profil adresi bulunamadı, lütfen bizimle iletişime geçin." };
+}
+
+// Giriş yapan uzmanın kendi profili (her statüde — RLS owner_select izin verir).
+export async function getMyExpert(): Promise<(Expert & { status: string }) | null> {
+  if (!db) return null;
+  const { data: userData } = await db.auth.getUser();
+  const uid = userData?.user?.id;
+  if (!uid) return null;
+  const { data, error } = await db.from("experts").select("*").eq("owner_id", uid).maybeSingle();
+  if (error || !data) return null;
+  return { ...rowToExpert(data), status: data.status };
 }
 
 export { staticExperts, staticPosts, getExpertProfile };

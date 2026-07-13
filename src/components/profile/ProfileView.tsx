@@ -5,7 +5,7 @@ import type { ExpertProfile, ProfileSectionKey } from "@/data/experts";
 import { loadProfileOverride, type ProfileOverride } from "@/lib/profileStore";
 import { ExpertPhoto } from "@/components/ExpertPhoto";
 import { profileUrl, safeExternalUrl } from "@/lib/site";
-import { createAppointment, getAppointments } from "@/lib/appointments";
+import { createAppointment, getBookedSlots } from "@/lib/appointments";
 
 const TABS: { key: ProfileSectionKey; label: string }[] = [
   { key: "about", label: "Hakkımda" },
@@ -46,16 +46,14 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
   const current = visibleTabs.find((t) => t.key === active) ? active : visibleTabs[0]?.key ?? "about";
 
   // Zaten talep edilmiş (reddedilmemiş/iptal olmamış) gün+saat çiftleri —
-  // çifte rezervasyonu önlemek için takvimden gizlenir.
+  // çifte rezervasyonu önlemek için takvimden gizlenir. Randevu tablosu artık
+  // sahibe kilitli olduğundan PII sızdırmayan booked_slots RPC'si kullanılır.
   const [bookedKeys, setBookedKeys] = useState<Set<string>>(new Set());
   useEffect(() => {
     let active = true;
-    getAppointments(base.slug).then((rows) => {
+    getBookedSlots(base.slug).then((slots) => {
       if (!active) return;
-      const keys = rows
-        .filter((a) => a.day && a.time && a.status !== "rejected" && a.status !== "cancelled")
-        .map((a) => `${a.day}|${a.time}`);
-      setBookedKeys(new Set(keys));
+      setBookedKeys(new Set(slots.map((s) => `${s.day}|${s.time}`)));
     });
     return () => {
       active = false;

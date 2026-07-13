@@ -1,8 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { sb } from "@/lib/supabaseClient";
 import type { ExpertProfile, ProfileSectionKey } from "@/data/experts";
 
-// Panel düzenlemeleri artık Supabase'te (profile_overrides). Auth Faz'ında
-// sahibe kilitlenecek; şimdilik demo RLS ile anon okuma/yazma.
+// Panel düzenlemeleri Supabase'te (profile_overrides). RLS: okuma herkese
+// açık (public profil bunları gösterir); yazma yalnızca profil sahibi/admin.
 export type CalendarSlot = { day: string; time: string };
 export type ProfileCalendar = { enabled: boolean; slots: CalendarSlot[] };
 
@@ -18,9 +18,7 @@ export type ProfileOverride = {
   calendar?: ProfileCalendar;
 };
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const db = url && key && !url.includes("xxxx") ? createClient(url, key, { auth: { persistSession: false } }) : null;
+const db = sb;
 
 export async function loadProfileOverride(slug: string): Promise<ProfileOverride | null> {
   if (!db) return null;

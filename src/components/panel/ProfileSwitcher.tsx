@@ -2,23 +2,23 @@
 
 import Link from "next/link";
 import { usePanelProfile } from "./PanelProfileContext";
+import { signOut } from "@/lib/adminAuth";
 
-// Panelin tüm sayfalarında görünen, tek bir yerden yönetilen profil seçici.
-// Gerçek giriş (auth) eklendiğinde bu bileşen tamamen kaldırılacak; o zamana
-// kadar hangi profilin düzenlendiği burada açıkça gösterilir (Görev 3/5).
+// Panelin tüm sayfalarında görünen profil çubuğu.
+// - uzman: kendi profili (seçici yok) + onay durumu + çıkış.
+// - admin: tüm onaylı uzmanlar arasında geçiş (destek amaçlı).
 export function ProfileSwitcher() {
-  const { experts, loading, activeSlug, setActiveSlug } = usePanelProfile();
+  const { experts, loading, activeSlug, setActiveSlug, role, myStatus } = usePanelProfile();
   const active = experts.find((e) => e.id === activeSlug);
 
   if (loading) {
     return <div className="h-[52px] animate-pulse rounded-[10px] bg-[#f3eee6]" />;
   }
 
-  if (experts.length === 0) {
+  if (role === "admin" && experts.length === 0) {
     return (
       <div className="rounded-[10px] border border-dashed border-[rgba(16,40,68,0.18)] bg-[#f3eee6] px-4 py-4 text-sm text-[#102844]">
-        Henüz onaylanmış uzman profili yok. Ana sayfadaki <strong>Kayıt Ol</strong> formundan
-        başvuru yapılabilir; başvurular yönetici onayından sonra burada görünür.
+        Henüz onaylanmış uzman profili yok. Başvurular /admin panelinde bekliyor olabilir.
       </div>
     );
   }
@@ -30,7 +30,7 @@ export function ProfileSwitcher() {
           {active?.initials ?? "?"}
         </span>
         <div className="text-sm">
-          <div className="text-[rgba(16,40,68,0.6)]">Düzenlenen profil</div>
+          <div className="text-[rgba(16,40,68,0.6)]">{role === "admin" ? "Düzenlenen profil (admin)" : "Profilin"}</div>
           <div className="flex items-center gap-2 font-semibold text-[#0d2c4b]">
             {active ? `${active.name} — ${active.title}` : "Profil seçilmedi"}
             {active?.premium && (
@@ -38,27 +38,46 @@ export function ProfileSwitcher() {
                 Premium
               </span>
             )}
+            {role === "uzman" && myStatus === "pending" && (
+              <span className="rounded-full border border-[#c99a53] px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-[#c99a53]">
+                Onay bekliyor
+              </span>
+            )}
+            {role === "uzman" && myStatus === "rejected" && (
+              <span className="rounded-full border border-[rgba(179,38,30,0.5)] px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-[#b3261e]">
+                Yayında değil
+              </span>
+            )}
           </div>
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <select
-          aria-label="Düzenlenecek profili seç"
-          value={activeSlug ?? ""}
-          onChange={(e) => setActiveSlug(e.target.value)}
-          className="h-10 rounded-[6px] border border-[rgba(16,40,68,0.14)] bg-[#fffdf9] px-3 text-sm text-[#0d2c4b] outline-none focus:border-[#c99a53]"
-        >
-          {experts.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name} — {e.title}
-            </option>
-          ))}
-        </select>
-        {active && (
+        {role === "admin" && (
+          <select
+            aria-label="Düzenlenecek profili seç"
+            value={activeSlug ?? ""}
+            onChange={(e) => setActiveSlug(e.target.value)}
+            className="h-10 rounded-[6px] border border-[rgba(16,40,68,0.14)] bg-[#fffdf9] px-3 text-sm text-[#0d2c4b] outline-none focus:border-[#c99a53]"
+          >
+            {experts.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name} — {e.title}
+              </option>
+            ))}
+          </select>
+        )}
+        {active && myStatus !== "pending" && (
           <Link href={`/uzman/${active.id}`} target="_blank" className="text-sm font-semibold text-[#0d2c4b] hover:text-[#c99a53]">
             Profili görüntüle →
           </Link>
         )}
+        <button
+          type="button"
+          onClick={() => signOut().then(() => window.location.reload())}
+          className="text-sm font-semibold text-[rgba(16,40,68,0.5)] transition-colors hover:text-[#b3261e]"
+        >
+          Çıkış
+        </button>
       </div>
     </div>
   );

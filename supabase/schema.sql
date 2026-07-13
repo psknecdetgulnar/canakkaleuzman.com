@@ -282,3 +282,117 @@ drop policy if exists pharmacy_admin_write on pharmacy_duty;
 create policy pharmacy_admin_write on pharmacy_duty for insert with check (is_admin());
 drop policy if exists pharmacy_admin_delete on pharmacy_duty;
 create policy pharmacy_admin_delete on pharmacy_duty for delete using (is_admin());
+
+-- ── MIGRASYON: GERÇEK GİRİŞ SİSTEMİ (Faz-auth) ──────────────────────────────
+-- Uzman ve şirketler artık Supabase Auth hesabıyla çalışır. Her profil satırı
+-- owner_id ile sahibine bağlanır; DEMO (anon açık) yazma politikaları kaldırılıp
+-- sahip-bazlı politikalarla değiştirilir. Halka açık okuma politikaları aynen
+-- kalır (dizin, profil, blog, eczane). Admin (is_admin) her şeye yetkilidir.
+
+alter table experts add column if not exists owner_id uuid;
+alter table companies add column if not exists owner_id uuid;
+create index if not exists experts_owner_idx on experts(owner_id);
+create index if not exists companies_owner_idx on companies(owner_id);
+
+-- Sahip, kendi uzman satırını her statüde görebilir ve güncelleyebilir.
+drop policy if exists experts_owner_select on experts;
+create policy experts_owner_select on experts for select using (owner_id = auth.uid());
+drop policy if exists experts_owner_update on experts;
+create policy experts_owner_update on experts for update
+  using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+-- Şirket: kayıt yalnızca oturumlu kullanıcıyla (owner_id = kendisi).
+drop policy if exists companies_demo_write on companies;
+drop policy if exists companies_demo_update on companies;
+drop policy if exists companies_owner_insert on companies;
+create policy companies_owner_insert on companies for insert
+  with check (owner_id = auth.uid());
+drop policy if exists companies_owner_select on companies;
+create policy companies_owner_select on companies for select using (owner_id = auth.uid());
+drop policy if exists companies_owner_update on companies;
+create policy companies_owner_update on companies for update
+  using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+-- Profil düzenlemeleri: yalnızca profil sahibi (veya admin).
+drop policy if exists overrides_demo_write on profile_overrides;
+drop policy if exists overrides_demo_update on profile_overrides;
+drop policy if exists overrides_owner_insert on profile_overrides;
+create policy overrides_owner_insert on profile_overrides for insert
+  with check (is_admin() or exists (select 1 from experts e where e.id = expert_id and e.owner_id = auth.uid()));
+drop policy if exists overrides_owner_update on profile_overrides;
+create policy overrides_owner_update on profile_overrides for update
+  using (is_admin() or exists (select 1 from experts e where e.id = expert_id and e.owner_id = auth.uid()))
+  with check (is_admin() or exists (select 1 from experts e where e.id = expert_id and e.owner_id = auth.uid()));
+drop policy if exists overrides_owner_delete on profile_overrides;
+create policy overrides_owner_delete on profile_overrides for delete
+  using (is_admin() or exists (select 1 from experts e where e.id = expert_id and e.owner_id = auth.uid()));
+
+-- Randevular: PII yalnızca ilgili uzmanın sahibine (ve admin'e) görünür.
+drop policy if exists appointments_demo_read on appointments;
+drop policy if exists appointments_demo_update on appointments;
+drop policy if exists appointments_owner_read on appointments;
+create policy appointments_owner_read on appointments for select
+  using (is_admin() or exists (select 1 from experts e where e.id = expert_id and e.owner_id = auth.uid()));
+drop policy if exists appointments_owner_update on appointments;
+create policy appointments_owner_update on appointments for update
+  using (is_admin() or exists (select 1 from experts e where e.id = expert_id and e.owner_id = auth.uid()))
+  with check (is_admin() or exists (select 1 from experts e where e.id = expert_id and e.owner_id = auth.uid()));
+
+-- Halka açık takvim "dolu saat" görünümü: PII sızdırmadan yalnızca gün+saat.
+-- (Randevu SELECT'i kilitlendiği için public profil bu fonksiyonu kullanır.)
+create or replace function public.booked_slots(p_expert_id text)
+returns table(day text, slot_time text)
+language sql stable security definer set search_path = public as $$
+  select day, slot_time from appointments
+  where expert_id = p_expert_id
+    and status in ('pending','confirmed')
+    and day is not null and slot_time is not null
+$$;
+
+-- Blog: yazma yalnızca yazar-profilin sahibi (veya admin).
+drop policy if exists blog_demo_write on blog_posts;
+drop policy if exists blog_demo_update on blog_posts;
+drop policy if exists blog_demo_delete on blog_posts;
+drop policy if exists blog_owner_insert on blog_posts;
+create policy blog_owner_insert on blog_posts for insert
+  with check (is_admin() or exists (select 1 from experts e where e.id = author_id and e.owner_id = auth.uid()));
+drop policy if exists blog_owner_update on blog_posts;
+create policy blog_owner_update on blog_posts for update
+  using (is_admin() or exists (select 1 from experts e where e.id = author_id and e.owner_id = auth.uid()))
+  with check (is_admin() or exists (select 1 from experts e where e.id = author_id and e.owner_id = auth.uid()));
+drop policy if exists blog_owner_delete on blog_posts;
+create policy blog_owner_delete on blog_posts for delete
+  using (is_admin() or exists (select 1 from experts e where e.id = author_id and e.owner_id = auth.uid()));
+
+-- İş ilanları: yazma yalnızca şirket sahibi (veya admin).
+drop policy if exists job_listings_demo_write on job_listings;
+drop policy if exists job_listings_demo_update on job_listings;
+drop policy if exists job_listings_demo_delete on job_listings;
+drop policy if exists job_owner_insert on job_listings;
+create policy job_owner_insert on job_listings for insert
+  with check (is_admin() or exists (select 1 from companies c where c.id = company_id and c.owner_id = auth.uid()));
+drop policy if exists job_owner_update on job_listings;
+create policy job_owner_update on job_listings for update
+  using (is_admin() or exists (select 1 from companies c where c.id = company_id and c.owner_id = auth.uid()))
+  with check (is_admin() or exists (select 1 from companies c where c.id = company_id and c.owner_id = auth.uid()));
+drop policy if exists job_owner_delete on job_listings;
+create policy job_owner_delete on job_listings for delete
+  using (is_admin() or exists (select 1 from companies c where c.id = company_id and c.owner_id = auth.uid()));
+
+-- Destek: gönderen yalnızca kendi mesajlarını görür (admin hepsini).
+drop policy if exists support_demo_read on support_messages;
+drop policy if exists support_owner_read on support_messages;
+create policy support_owner_read on support_messages for select
+  using (
+    is_admin()
+    or (sender_type = 'uzman'  and exists (select 1 from experts   e where e.id = sender_id and e.owner_id = auth.uid()))
+    or (sender_type = 'sirket' and exists (select 1 from companies c where c.id = sender_id and c.owner_id = auth.uid()))
+  );
+
+-- ── MIGRASYON: Premium tarih aralığı ────────────────────────────────────────
+-- Admin, premium'un başlangıç/bitişini belirler; ikisi de null + premium=true
+-- ise "sonsuza kadar". Efektif premium uygulama katmanında hesaplanır
+-- (tarih geçince otomatik normal statüye döner). Bu alanlar HİÇBİR public
+-- yüzeyde gösterilmez.
+alter table experts add column if not exists premium_from timestamptz;
+alter table experts add column if not exists premium_until timestamptz;

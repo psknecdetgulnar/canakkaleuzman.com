@@ -1,10 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { sb as db } from "@/lib/supabaseClient";
 
 // Ziyaretçi randevu talebi + uzman gelen kutusu → Supabase.
-// RLS: anon insert (ziyaretçi), demo okuma/güncelleme (auth Faz'ında sahibe kilitlenecek).
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const db = url && key && !url.includes("xxxx") ? createClient(url, key, { auth: { persistSession: false } }) : null;
+// RLS: anon insert (ziyaretçi); okuma/güncelleme yalnızca profil sahibi
+// (owner_id) veya admin. Paylaşılan oturumlu istemci JWT'yi taşır.
 
 export type AppointmentStatus = "pending" | "confirmed" | "rejected" | "cancelled";
 
@@ -60,6 +58,17 @@ function rowToAppointment(r: any): Appointment {
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+// Halka açık profil takvimi: PII olmadan yalnızca dolu gün+saat çiftleri.
+// (appointments SELECT'i sahibe kilitli olduğundan security-definer RPC kullanılır.)
+export async function getBookedSlots(expertId: string): Promise<{ day: string; time: string }[]> {
+  if (!db) return [];
+  const { data, error } = await db.rpc("booked_slots", { p_expert_id: expertId });
+  if (error || !data) return [];
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  return (data as any[]).map((r) => ({ day: r.day, time: r.slot_time }));
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+}
 
 // Panel gelen kutusu: bir uzmanın tüm randevu taleplerini getirir (en yeni önce).
 export async function getAppointments(expertId: string): Promise<Appointment[]> {
