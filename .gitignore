@@ -10,3 +10,7 @@ next-env.d.ts
 
 # Codex çalışma/geliştirme anlık görüntüleri ve logları (kaynak koda dahil değil)
 .codex/
+
+# Yerel notlar (repoya girmesin)
+admin panel.txt
+*.notes.txt
