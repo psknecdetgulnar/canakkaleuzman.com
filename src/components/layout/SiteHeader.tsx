@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 // Tüm sayfalarda AYNI üst menü — önceden anasayfa (Header) ve diğer
@@ -25,6 +25,13 @@ const navItems = [
 
 export function SiteHeader({ onJoinClick, onLoginClick }: SiteHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
+  // Admin ayarlarındaki bakım notu doluysa site genelinde duyuru şeridi.
+  const [note, setNote] = useState<string>("");
+  useEffect(() => {
+    import("@/lib/adminPanel").then(({ getSetting }) =>
+      getSetting<{ maintenanceNote?: string }>("site_config", {}).then((v) => setNote(v.maintenanceNote?.trim() ?? ""))
+    );
+  }, []);
 
   const closeMenu = () => {
     setIsOpen(false);
@@ -90,6 +97,14 @@ export function SiteHeader({ onJoinClick, onLoginClick }: SiteHeaderProps) {
           )}
         </div>
 
+        {/* Mobil: dönüşüm için Kayıt Ol her zaman görünür */}
+        <div className="ml-auto flex items-center gap-2 lg:hidden">
+          {onJoinClick ? (
+            <button type="button" onClick={onJoinClick} className="rounded-[6px] bg-[#0d2c4b] px-3.5 py-2 text-xs font-semibold text-[#fffdf9]">Kayıt Ol</button>
+          ) : (
+            <Link href="/panel" className="rounded-[6px] bg-[#0d2c4b] px-3.5 py-2 text-xs font-semibold text-[#fffdf9]">Kayıt Ol</Link>
+          )}
+        </div>
         <button
           type="button"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(16,40,68,0.16)] bg-[#fffdf9] text-[#0d2c4b] lg:hidden"
@@ -148,6 +163,11 @@ export function SiteHeader({ onJoinClick, onLoginClick }: SiteHeaderProps) {
               </Link>
             )}
           </div>
+        </div>
+      )}
+      {note && (
+        <div className="border-t border-[#c99a53]/40 bg-[#fdf3e9] px-5 py-2 text-center text-xs font-semibold text-[#7a4f1a]">
+          📢 {note}
         </div>
       )}
     </header>

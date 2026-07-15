@@ -38,6 +38,8 @@ function rowToExpert(r: any): Expert {
     bio: r.bio ?? "",
     services: r.services ?? [],
     premium: effectivePremium(r),
+    verified: r.verified ?? false,
+    sponsored: r.sponsored ?? false,
   };
 }
 
@@ -83,7 +85,7 @@ function rowToPost(r: any): BlogPost {
 // Statik veri yalnızca env anahtarları hiç yokken (yerel tasarım/demo) kullanılır.
 export async function getExperts(): Promise<Expert[]> {
   if (!db) return staticExperts;
-  const { data, error } = await db.from("experts").select("*").eq("status", "approved").order("name");
+  const { data, error } = await db.from("experts").select("*").eq("status", "approved").order("sponsored", { ascending: false }).order("name");
   if (error || !data) return [];
   return data.map(rowToExpert);
 }

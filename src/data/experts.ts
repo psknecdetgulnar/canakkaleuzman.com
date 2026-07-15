@@ -17,6 +17,8 @@ export type Expert = {
   // WhatsApp, sosyal linkler, web sitesi) yalnızca premium'da halka açık
   // gösterilir ve panelde düzenlenebilir. Free profilde bu alanlar salt-okunur.
   premium: boolean;
+  verified?: boolean;  // admin onaylı "Doğrulanmış" rozeti
+  sponsored?: boolean; // dizinde öne çıkarılır (etiketli)
 };
 
 // ── Zengin profil modeli (sosyal-medya tadında üye sayfası) ──

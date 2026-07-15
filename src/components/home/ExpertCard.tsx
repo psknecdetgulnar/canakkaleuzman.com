@@ -16,10 +16,21 @@ export function ExpertCard({ expert }: ExpertCardProps) {
           Premium
         </span>
       )}
+      {/* Sponsorlu öne çıkarma her zaman ETİKETLİ — dürüst reklam ilkesi */}
+      {expert.sponsored && (
+        <span className="absolute left-2 top-2 rounded-full border border-[#c99a53] px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-[#c99a53]">
+          Sponsorlu
+        </span>
+      )}
       <div className="mx-auto h-[58px] w-[58px] overflow-hidden rounded-full bg-[#efe8dc]">
         <ExpertPhoto name={expert.name} title={expert.title} className="h-full w-full object-cover" />
       </div>
-      <h3 className="mt-2 text-base font-bold text-[#0d2c4b]">{expert.name}</h3>
+      <h3 className="mt-2 flex items-center justify-center gap-1 text-base font-bold text-[#0d2c4b]">
+        {expert.name}
+        {expert.verified && (
+          <span title="Doğrulanmış uzman" aria-label="Doğrulanmış uzman" className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#0d2c4b] text-[0.6rem] text-[#fffdf9]">✓</span>
+        )}
+      </h3>
       <p className="text-sm text-[#102844]">{expert.title}</p>
       <div className="mt-1 flex items-center justify-center gap-1 text-[0.8rem] text-[#102844]">
         <span className="tracking-[0.08em] text-[#d7a321]">★★★★★</span>

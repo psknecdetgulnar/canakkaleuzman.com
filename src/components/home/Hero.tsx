@@ -24,12 +24,12 @@ export function Hero({ filters, onFilterChange, onSearch }: HeroProps) {
         className="object-cover object-center"
       />
       {/* Sol tarafta metin okunurluğu için açık gradyan */}
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(246,245,241,0.94)_0%,rgba(246,245,241,0.72)_26%,rgba(246,245,241,0.30)_46%,transparent_64%)]" />
+      <div className="absolute inset-0 bg-[rgba(246,245,241,0.88)] md:bg-[linear-gradient(90deg,rgba(246,245,241,0.94)_0%,rgba(246,245,241,0.72)_26%,rgba(246,245,241,0.30)_46%,transparent_64%)]" />
       <HeroAtmosphere />
 
       <div className="relative mx-auto max-w-[860px] px-5 pb-10 pt-14 md:min-h-[450px] md:pb-24 md:pt-16 lg:px-0">
         <div className="max-w-[620px]">
-          <h1 className="font-display text-[2.8rem] font-semibold leading-[0.98] tracking-[-0.02em] text-[#0d2c4b] md:text-[4.35rem]">
+          <h1 className="font-display text-[2.3rem] sm:text-[2.8rem] font-semibold leading-[0.98] tracking-[-0.02em] text-[#0d2c4b] md:text-[4.35rem]">
             Çanakkale’de
             <br />
             Uzmanına Güven

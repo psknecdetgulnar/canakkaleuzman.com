@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { categories, type CategorySlug } from "@/data/categories";
 import type { Expert } from "@/data/experts";
@@ -10,6 +10,7 @@ import type { PharmacyDuty } from "@/lib/pharmacy";
 import { createCompany } from "@/lib/companies";
 import { createExpertApplication } from "@/lib/db";
 import { signIn, signUpUser } from "@/lib/adminAuth";
+import { getSetting } from "@/lib/adminPanel";
 import { Header } from "./Header";
 import { Hero } from "./Hero";
 import { HomePharmacyBanner } from "./HomePharmacyBanner";
@@ -110,6 +111,20 @@ const STORAGE_COMPANY_KEY = "cbuz_company_active_id";
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
   const [tab, setTab] = useState<"uzman" | "sirket">("uzman");
+  // Admin ayarları: kayıtlar/başvurular kapatılabilir (site_settings).
+  const [cfg, setCfg] = useState<{ registrationsOpen: boolean; expertApplicationsOpen: boolean } | null>(null);
+  useEffect(() => {
+    getSetting("site_config", { registrationsOpen: true, expertApplicationsOpen: true }).then((v) =>
+      setCfg({ registrationsOpen: v.registrationsOpen !== false, expertApplicationsOpen: v.expertApplicationsOpen !== false })
+    );
+  }, []);
+  if (cfg && !cfg.registrationsOpen) {
+    return (
+      <p className="rounded-[8px] bg-[#f3eee6] p-4 text-sm leading-6 text-[#102844]">
+        Yeni kayıtlar geçici olarak durduruldu. Daha sonra tekrar dene veya bizimle iletişime geç.
+      </p>
+    );
+  }
   return (
     <div>
       <div className="mb-5 flex gap-2 rounded-[8px] bg-[#f3eee6] p-1">
@@ -132,12 +147,21 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
           Şirket olarak
         </button>
       </div>
-      {tab === "uzman" ? <ExpertJoinForm /> : <CompanyJoinForm onDone={onDone} />}
+      {tab === "uzman" ? (
+        cfg && !cfg.expertApplicationsOpen ? (
+          <p className="rounded-[8px] bg-[#f3eee6] p-4 text-sm leading-6 text-[#102844]">Uzman başvuruları geçici olarak durduruldu.</p>
+        ) : (
+          <ExpertJoinForm onDone={onDone} />
+        )
+      ) : (
+        <CompanyJoinForm onDone={onDone} />
+      )}
     </div>
   );
 }
 
-function ExpertJoinForm() {
+function ExpertJoinForm({ onDone }: { onDone: () => void }) {
+  const router = useRouter();
   const [form, setForm] = useState({
     name: "",
     title: "",
@@ -176,8 +200,14 @@ function ExpertJoinForm() {
       ownerId: acc.userId,
     });
     setBusy(false);
-    if (res.ok) setDone(acc.needsConfirm ? "confirm" : "ok");
-    else setError(res.error ?? "Başvuru gönderilemedi.");
+    if (res.ok) {
+      if (acc.needsConfirm) setDone("confirm");
+      else {
+        // Oturum açık: doğrudan paneline götür (orada "Onay bekliyor" görür).
+        onDone();
+        router.push("/panel");
+      }
+    } else setError(res.error ?? "Başvuru gönderilemedi.");
   }
 
   if (done) {
@@ -331,6 +361,20 @@ function LoginForm({ onDone }: { onDone: () => void }) {
       <Field label="E-posta" placeholder="ornek@mail.com" type="email" value={form.email} onChange={(v) => setForm((f) => ({ ...f, email: v }))} />
       <Field label="Şifre" placeholder="••••••••" type="password" value={form.password} onChange={(v) => setForm((f) => ({ ...f, password: v }))} />
       {error && <p className="text-sm text-[#b3261e]">{error}</p>}
+      <button
+        type="button"
+        onClick={async () => {
+          if (!form.email.trim()) { setError("Önce e-posta adresini yaz, sonra tıkla."); return; }
+          const { sb } = await import("@/lib/supabaseClient");
+          if (!sb) return;
+          await sb.auth.resetPasswordForEmail(form.email.trim(), { redirectTo: window.location.origin + "/sifre-yenile" });
+          setError(null);
+          alert("Şifre sıfırlama bağlantısı e-postana gönderildi (hesap varsa).");
+        }}
+        className="self-start text-xs font-semibold text-[rgba(16,40,68,0.6)] underline underline-offset-4 hover:text-[#c99a53]"
+      >
+        Şifremi unuttum
+      </button>
       <button
         type="submit"
         disabled={busy}

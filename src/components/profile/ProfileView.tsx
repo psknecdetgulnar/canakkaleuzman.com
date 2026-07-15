@@ -178,6 +178,9 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
                 <div>
                   <h1 className="flex flex-wrap items-center gap-2 font-display text-[2rem] font-semibold uppercase leading-tight text-[#0d2c4b]">
                     {profile.name}
+                    {profile.verified && (
+                      <span title="Doğrulanmış uzman" className="inline-flex items-center gap-1 rounded-full bg-[#0d2c4b] px-2.5 py-1 text-[0.7rem] font-bold normal-case tracking-wide text-[#fffdf9]">✓ Doğrulanmış</span>
+                    )}
                     {profile.premium && (
                       <span className="rounded-full bg-[#c99a53] px-2.5 py-1 text-[0.7rem] font-bold normal-case tracking-wide text-[#fffdf9]">
                         Premium
@@ -212,13 +215,13 @@ export function ProfileView({ profile: base }: { profile: ExpertProfile }) {
             {/* Sekmeler */}
             {visibleTabs.length > 0 && (
               <div className="mt-5 overflow-hidden rounded-[14px] border border-[rgba(16,40,68,0.10)] bg-[#fffdf9] shadow-[0_18px_44px_rgba(13,44,75,0.06)]">
-                <div className="flex flex-wrap border-b border-[rgba(16,40,68,0.10)]">
+                <div className="flex overflow-x-auto border-b border-[rgba(16,40,68,0.10)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {visibleTabs.map((t) => (
                     <button
                       key={t.key}
                       type="button"
                       onClick={() => setActive(t.key)}
-                      className={`px-5 py-4 text-sm font-semibold transition-colors ${
+                      className={`shrink-0 whitespace-nowrap px-4 py-4 text-sm font-semibold transition-colors sm:px-5 ${
                         current === t.key
                           ? "bg-[#0d2c4b] text-[#fffdf9]"
                           : "text-[#0d2c4b] hover:bg-[#f3eee6]"

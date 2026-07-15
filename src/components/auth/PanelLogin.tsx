@@ -56,6 +56,21 @@ export function PanelLogin({ panelName }: { panelName: string }) {
           />
         </label>
         {error && <p className="text-sm text-[#b3261e]">{error}</p>}
+      <button
+        type="button"
+        onClick={async () => {
+          if (!form.email.trim()) { setError("Önce e-posta adresini yaz, sonra tıkla."); return; }
+          const { sb } = await import("@/lib/supabaseClient");
+          if (!sb) return;
+          await sb.auth.resetPasswordForEmail(form.email.trim(), { redirectTo: window.location.origin + "/sifre-yenile" });
+          setError(null);
+          alert("Şifre sıfırlama bağlantısı e-postana gönderildi (hesap varsa).");
+        }}
+        className="self-start text-xs font-semibold text-[rgba(16,40,68,0.6)] underline underline-offset-4 hover:text-[#c99a53]"
+      >
+        Şifremi unuttum
+      </button>
+
         <button
           type="submit"
           disabled={busy}

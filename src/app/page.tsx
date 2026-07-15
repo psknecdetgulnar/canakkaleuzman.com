@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { HomePage } from "@/components/home/HomePage";
 import { getExperts, getBlogPosts } from "@/lib/db";
 import { getCompanies, getOpenJobListings } from "@/lib/companies";
-import { getTodayPharmaciesWithFallback } from "@/lib/pharmacy";
+import { getFreshPharmacies } from "@/lib/pharmacyServer";
 import { rootUrl } from "@/lib/site";
 
 export const revalidate = 300;
@@ -20,7 +20,7 @@ export default async function Page() {
     getBlogPosts(),
     getCompanies(),
     getOpenJobListings(),
-    getTodayPharmaciesWithFallback(),
+    getFreshPharmacies(),
   ]);
   return (
     <HomePage

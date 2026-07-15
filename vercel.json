@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/pharmacy",
-      "schedule": "0 4 * * *"
+      "schedule": "1 5 * * *"
     }
   ]
 }

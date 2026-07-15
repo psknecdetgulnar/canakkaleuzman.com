@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTodayPharmaciesWithFallback } from "@/lib/pharmacy";
+import { getFreshPharmacies } from "@/lib/pharmacyServer";
 import { ProfileHeaderBar } from "@/components/profile/ProfileHeaderBar";
 import { Footer } from "@/components/home/Footer";
 import { rootUrl } from "@/lib/site";
@@ -35,7 +35,7 @@ function dutyNightLabel(iso: string) {
 }
 
 export default async function PharmacyDutyPage() {
-  const { pharmacies, date, isStale } = await getTodayPharmaciesWithFallback();
+  const { pharmacies, date, isStale } = await getFreshPharmacies();
 
   return (
     <>
@@ -81,7 +81,7 @@ export default async function PharmacyDutyPage() {
               </ul>
             )}
             <p className="mt-6 text-xs text-[rgba(16,40,68,0.5)]">
-              Liste her sabah saat 10:00&apos;da güncellenir. Nöbet, gösterilen günün sabahından ertesi
+              Liste her sabah otomatik güncellenir. Nöbet, gösterilen günün sabahından ertesi
               günün sabahına kadar (08:30 – 08:30) sürer. Acil durumlarda 112&apos;yi arayın.
             </p>
           </div>
