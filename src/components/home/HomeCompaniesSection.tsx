@@ -1,9 +1,12 @@
 import Link from "next/link";
-import type { Company, JobListing } from "@/lib/companies";
+import type { Company } from "@/lib/companies";
+
+// Şirket ilanı veya onaylı halka açık ilan — anasayfa akışı için ortak biçim.
+export type JobItem = { id: string; title: string; employmentType: string; location: string; companyId?: string; orgLabel?: string };
 
 // Şirketler ve iş ilanları için anasayfa akışı. Uzman dizininden ayrı bir
 // katman — Çanakkale'deki şirketler kendi sayfalarını burada tanıtır.
-export function HomeCompaniesSection({ companies, jobs }: { companies: Company[]; jobs: JobListing[] }) {
+export function HomeCompaniesSection({ companies, jobs }: { companies: Company[]; jobs: JobItem[] }) {
   if (companies.length === 0 && jobs.length === 0) return null;
   const companyMap = new Map(companies.map((c) => [c.id, c]));
 
@@ -27,7 +30,7 @@ export function HomeCompaniesSection({ companies, jobs }: { companies: Company[]
         {jobs.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-3">
             {jobs.slice(0, 3).map((j) => {
-              const company = companyMap.get(j.companyId);
+              const company = j.companyId ? companyMap.get(j.companyId) : undefined;
               return (
                 <Link
                   key={j.id}
@@ -40,7 +43,7 @@ export function HomeCompaniesSection({ companies, jobs }: { companies: Company[]
                   <h3 className="mt-3 font-display text-[1.05rem] font-semibold leading-snug text-[#0d2c4b]">
                     {j.title}
                   </h3>
-                  {company && <p className="mt-1 text-sm text-[#102844]">{company.name}</p>}
+                  {(company || j.orgLabel) && <p className="mt-1 text-sm text-[#102844]">{company?.name ?? j.orgLabel}</p>}
                   <p className="mt-2 text-xs text-[rgba(16,40,68,0.6)]">{j.location}</p>
                 </Link>
               );

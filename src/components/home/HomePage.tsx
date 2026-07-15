@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { categories, type CategorySlug } from "@/data/categories";
 import type { Expert } from "@/data/experts";
 import type { BlogPost } from "@/data/blog";
-import type { Company, JobListing } from "@/lib/companies";
+import type { Company } from "@/lib/companies";
+import type { JobItem } from "./HomeCompaniesSection";
 import type { PharmacyDuty } from "@/lib/pharmacy";
 import { createCompany } from "@/lib/companies";
 import { createExpertApplication } from "@/lib/db";
@@ -43,7 +44,7 @@ export function HomePage({
   experts: Expert[];
   blogPosts: BlogPost[];
   companies: Company[];
-  jobs: JobListing[];
+  jobs: JobItem[];
   pharmacies: PharmacyDuty[];
   pharmacyDate?: string;
 }) {

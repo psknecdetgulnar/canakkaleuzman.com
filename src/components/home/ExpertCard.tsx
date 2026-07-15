@@ -32,11 +32,15 @@ export function ExpertCard({ expert }: ExpertCardProps) {
         )}
       </h3>
       <p className="text-sm text-[#102844]">{expert.title}</p>
-      <div className="mt-1 flex items-center justify-center gap-1 text-[0.8rem] text-[#102844]">
-        <span className="tracking-[0.08em] text-[#d7a321]">★★★★★</span>
-        <span className="font-medium">{expert.rating.toFixed(1)}</span>
-        <span className="text-[rgba(16,40,68,0.58)]">({expert.reviewCount})</span>
-      </div>
+      {expert.reviewCount > 0 ? (
+        <div className="mt-1 flex items-center justify-center gap-1 text-[0.8rem] text-[#102844]">
+          <span className="tracking-[0.08em] text-[#d7a321]">★★★★★</span>
+          <span className="font-medium">{expert.rating.toFixed(1)}</span>
+          <span className="text-[rgba(16,40,68,0.58)]">({expert.reviewCount})</span>
+        </div>
+      ) : (
+        <div className="mt-1 text-[0.75rem] font-semibold text-[#c99a53]">Yeni üye</div>
+      )}
       <p className="mt-1 text-sm font-semibold text-[#102844]">{expert.district}</p>
       <Link
         href={`/uzman/${expert.id}`}

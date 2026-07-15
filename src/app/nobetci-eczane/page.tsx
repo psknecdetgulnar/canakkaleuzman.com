@@ -71,6 +71,15 @@ export default async function PharmacyDutyPage() {
                       <span className="rounded-full bg-[#0d2c4b] px-3 py-1 text-xs font-semibold text-[#fffdf9]">{p.district}</span>
                     </div>
                     {p.address && <p className="mt-2 text-sm text-[#102844]">{p.address}</p>}
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name} ${p.address ?? ""} ${p.district} Çanakkale`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-[6px] border border-[rgba(16,40,68,0.2)] px-3 py-1.5 text-xs font-semibold text-[#0d2c4b] hover:border-[#c99a53] hover:text-[#c99a53]"
+                    >
+                      📍 Haritada Aç / Yol Tarifi
+                    </a>
+                    <br />
                     {p.phone && (
                       <a href={`tel:${p.phone.replace(/\s/g, "")}`} className="mt-1 inline-block text-sm font-semibold text-[#0d2c4b] hover:text-[#c99a53]">
                         {p.phone}
