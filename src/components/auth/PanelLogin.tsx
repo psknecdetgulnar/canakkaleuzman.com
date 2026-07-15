@@ -21,7 +21,9 @@ export function PanelLogin({ panelName }: { panelName: string }) {
     setError(null);
     const res = await signIn(form.email, form.password);
     if (res.ok) {
-      window.location.reload();
+      // Rolüne uygun panele git (yanlış paneldeyse gereksiz ara ekran olmasın).
+      if (res.redirect && res.redirect !== window.location.pathname) window.location.href = res.redirect;
+      else window.location.reload();
     } else {
       setBusy(false);
       setError(res.error ?? "Giriş başarısız.");

@@ -127,6 +127,27 @@ export function ShareProfileModal({ open, onClose, slug, name, title, district, 
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
 
+  async function handleWhatsApp() {
+    if (!ready || busy) return;
+    setBusy("share");
+    setNotice(null);
+    try {
+      const blob = await renderPng();
+      if (!blob) throw new Error("Görsel üretilemedi");
+      const file = new File([blob], `canakkaleuzman-${slug}-${format}.png`, { type: "image/png" });
+      if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `${name} — Çanakkale Uzman`, text: pageUrl });
+      } else {
+        downloadBlob(blob);
+        window.open(`https://wa.me/?text=${encodeURIComponent(`${name} — Çanakkale Uzman: ${pageUrl}`)}`, "_blank");
+        setNotice("Görsel indirildi; açılan WhatsApp penceresine görseli ekleyip paylaşabilirsin.");
+      }
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") setNotice("Paylaşım başarısız oldu, görseli indirip elle paylaşabilirsin.");
+    }
+    setBusy(null);
+  }
+
   async function handleDownload() {
     if (!ready || busy) return;
     setBusy("download");
@@ -207,6 +228,14 @@ export function ShareProfileModal({ open, onClose, slug, name, title, district, 
             className="rounded-[8px] bg-[#0d2c4b] px-5 py-3 text-sm font-semibold text-[#fffdf9] transition-colors hover:bg-[#143a60] disabled:opacity-50"
           >
             {busy === "share" ? "Hazırlanıyor…" : "📸 Instagram'da Paylaş"}
+          </button>
+          <button
+            type="button"
+            disabled={!ready || busy !== null}
+            onClick={handleWhatsApp}
+            className="rounded-[8px] bg-[#1faa55] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#178f47] disabled:opacity-50"
+          >
+            💬 WhatsApp&apos;ta Paylaş
           </button>
           <div className="grid grid-cols-2 gap-2">
             <button

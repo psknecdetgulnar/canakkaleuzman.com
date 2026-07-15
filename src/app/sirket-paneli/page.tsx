@@ -51,11 +51,13 @@ export default function CompanyPanelHubPage() {
               </div>
             </div>
             <div className="rounded-[12px] border border-[rgba(16,40,68,0.10)] bg-[#fffdf9] p-4">
-              <div className="text-xs text-[rgba(16,40,68,0.6)]">Sayfan yayında</div>
-              <div className="mt-1 font-display text-[1.6rem] font-semibold text-[#0d2c4b]">
-                <Link href={`/sirket/${active.id}`} target="_blank" className="hover:text-[#c99a53]">
-                  /sirket/{active.id} →
-                </Link>
+              <div className="text-xs text-[rgba(16,40,68,0.6)]">Sayfa durumu</div>
+              <div className="mt-1 font-display text-[1.3rem] font-semibold text-[#0d2c4b]">
+                {active.status === "approved" ? (
+                  <Link href={`/sirket/${active.id}`} target="_blank" className="hover:text-[#c99a53]">Yayında →</Link>
+                ) : (
+                  <span className="text-[#c99a53]">Onay bekliyor</span>
+                )}
               </div>
             </div>
           </div>

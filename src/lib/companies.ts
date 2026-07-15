@@ -142,7 +142,7 @@ export async function createCompany(c: NewCompany): Promise<{ ok: boolean; error
       phone: c.phone?.trim() || null,
       email: c.email?.trim() || null,
       address: c.address?.trim() || null,
-      status: "approved",
+      status: "pending",
       owner_id: ownerId,
     });
     if (!error) return { ok: true, id };
