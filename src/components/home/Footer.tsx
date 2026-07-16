@@ -45,6 +45,8 @@ export function Footer() {
               info@canakkaleuzman.com
             </a>
             <p>Çanakkale / Türkiye</p>
+            <Link href="/gizlilik" className="block hover:text-[#c99a53]">Gizlilik &amp; KVKK</Link>
+            <Link href="/kullanim-kosullari" className="block hover:text-[#c99a53]">Kullanım Koşulları</Link>
           </div>
           {/* Gerçek çizim: Çanakkale Şehitler Abidesi (referans mockup'tan). */}
           <img
